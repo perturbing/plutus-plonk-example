@@ -81,7 +81,7 @@ padTo32Bytes ~bs
     | otherwise                   = error ()
 
 {-# INLINEABLE verifyPlonkSnarkjs #-}
-verifyPlonkSnarkjs :: PreInputs -> [Integer] -> Proof -> Scalar
+verifyPlonkSnarkjs :: PreInputs -> [Integer] -> Proof -> Bool
 verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 sSig3 x2 gen)
             pubInputs
             proof@(Proof ca cb cc cz ctl ctm cth cwo cwz ea eb ec es1 es2 ez)
@@ -158,8 +158,8 @@ verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 
         batchPolyCommitFull = batchPolyCommitG1 + scale v (commA + scale v (commB + scale v (commC + scale v (sSig1 + scale v sSig2))))
         -- this is [E]_1 in the plonk paper
         groupEncodedBatchEval = scale (negate r0 + v * (evalA + v * (evalB + v * (evalC + v * (evalS1 + v * evalS2)))) + u*evalZOmega ) bls12_381_G1_generator
-    in beta
+    in
     -- the final check that under the pairing.
-    -- bls12_381_finalVerify 
-    --   (bls12_381_millerLoop (commWOmega + scale u commWOmegaZeta) x2) 
-    --   (bls12_381_millerLoop (scale zeta commWOmega + scale (u*zeta*gen) commWOmegaZeta + batchPolyCommitFull - groupEncodedBatchEval) bls12_381_G2_generator)
+    bls12_381_finalVerify 
+      (bls12_381_millerLoop (commWOmega + scale u commWOmegaZeta) x2) 
+      (bls12_381_millerLoop (scale zeta commWOmega + scale (u*zeta*gen) commWOmegaZeta + batchPolyCommitFull - groupEncodedBatchEval) bls12_381_G2_generator)
