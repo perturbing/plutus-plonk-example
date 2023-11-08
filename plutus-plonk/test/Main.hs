@@ -3,7 +3,7 @@ module Main
 ) where
 
 import Types ( ProofJSONSnarkjs(..), PreInputsJSONSnarkjs(..) )
-import Plutus.Crypto.Plonk (Proof (..), PreInputs (..), verifyPlonkSnarkjs)
+import Plutus.Crypto.Plonk (Proof (..), PreInputs (..), verifyPlonkSnarkjs, convertToFastProof, convertToFastPreInputs, verifyPlonkFastSnarkjs)
 import Plutus.Crypto.BlsUtils (mkScalar, compressG1Point, compressG2Point, mkFp, Fp2 (..))
 
 import qualified PlutusTx.Prelude as P
@@ -23,6 +23,9 @@ main = do
             Just preIn -> do let p = convertProofSnarkjs proof
                              let i = convertPreInputsSnarkjs preIn
                              print $ verifyPlonkSnarkjs i [20] p
+                             let iFast = convertToFastPreInputs i
+                             let pFast = convertToFastProof iFast [20] p
+                             print $ verifyPlonkFastSnarkjs iFast [20] pFast
             Nothing -> print "Could not deserialize PreInputs test vector"
         Nothing -> print "Could not deserialize Proof test vector"
 

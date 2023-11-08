@@ -3,7 +3,8 @@
 {-# LANGUAGE NoImplicitPrelude     #-}
 
 module PlutusBenchmark.Verifier.Scripts 
-( verifyPlonkScriptSnarkjs
+( verifyPlonkScriptSnarkjsFast
+, verifyPlonkScriptSnarkjs
 ) where
 
 import PlutusTx
@@ -13,7 +14,14 @@ import PlutusTx.Prelude ( Integer, ($) )
 import PlutusCore (DefaultFun, DefaultUni)
 import UntypedPlutusCore qualified as UPLC
 
-import Plutus.Crypto.Plonk (verifyPlonkSnarkjs, Proof, PreInputs)
+import Plutus.Crypto.Plonk (Proof, PreInputs, verifyPlonkSnarkjs, PreInputsFast, ProofFast, verifyPlonkFastSnarkjs)
+
+verifyPlonkScriptSnarkjsFast :: PreInputsFast -> [Integer] -> ProofFast -> UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun ()
+verifyPlonkScriptSnarkjsFast preIn pub proof = 
+    getPlcNoAnn $ $$(compile [|| verifyPlonkFastSnarkjs ||]) 
+       `unsafeApplyCode` liftCodeDef preIn
+       `unsafeApplyCode` liftCodeDef pub
+       `unsafeApplyCode` liftCodeDef proof
 
 verifyPlonkScriptSnarkjs :: PreInputs -> [Integer] -> Proof -> UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun ()
 verifyPlonkScriptSnarkjs preIn pub proof = 

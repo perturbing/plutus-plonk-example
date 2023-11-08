@@ -3,8 +3,9 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE ViewPatterns           #-}
+-- {-# LANGUAGE Strict                 #-}
 
-module Plutus.Crypto.Plonk.Inputs 
+module Plutus.Crypto.Plonk.Inputs
 ( Proof (..)
 , PreInputs (..)
 , ProofFast (..)
@@ -13,11 +14,31 @@ module Plutus.Crypto.Plonk.Inputs
 , convertToFastPreInputs
 ) where
 
-import Plutus.Crypto.BlsUtils (Scalar (..), recip, unScalar, mkScalar)
-import PlutusTx.Builtins (BuiltinByteString, Integer, BuiltinBLS12_381_G1_Element, BuiltinBLS12_381_G2_Element, byteStringToInteger, blake2b_256)
+import Plutus.Crypto.BlsUtils
+    ( Scalar (..)
+    , recip
+    , unScalar
+    , mkScalar, reverseByteString, padTo32Bytes, bls12_381_field_prime)
+import PlutusTx.Builtins
+    ( BuiltinByteString,
+      Integer,
+      BuiltinBLS12_381_G1_Element,
+      BuiltinBLS12_381_G2_Element,
+      bls12_381_G1_uncompress,
+      byteStringToInteger,
+      blake2b_256,
+      integerToByteString,
+      keccak_256,
+      bls12_381_G1_compress )
 import PlutusTx (makeLift, makeIsDataIndexed, unstableMakeIsData)
 import PlutusTx.Numeric (AdditiveGroup (..), scale, (*))
-import PlutusTx.Prelude (map, (.), ($), bls12_381_G1_uncompress, enumFromTo, takeByteString, (<>))
+import PlutusTx.Prelude
+    ( map
+    , (.)
+    , ($)
+    , (<>)
+    , enumFromTo
+    , takeByteString, head, modulo)
 
 import qualified Prelude as Haskell
 
@@ -25,7 +46,7 @@ import qualified Prelude as Haskell
 -- Note that the G1 elements are compressed as bytestrings.
 -- The field elements are represented as integers as they are provided 
 -- by the prover and need to be checked to be in the field.
-data Proof = Proof 
+data Proof = Proof
     { commitmentA     :: BuiltinByteString -- a serialized G1 element
     , commitmentB     :: BuiltinByteString -- a serialized G1 element
     , commitmentC     :: BuiltinByteString -- a serialized G1 element
@@ -49,7 +70,7 @@ makeIsDataIndexed ''Proof [('Proof,0)]
 -- PreInputs are the minimal values that parametrize
 -- a plonk verifier. These values are known before proof
 -- generation.
-data PreInputs = PreInputs 
+data PreInputs = PreInputs
     { nPublic         :: Integer                     -- number of public inputs
     , power           :: Integer                     -- power, 2^power >= number of constraints in the circuit (the upper bound used)
     , k1              :: Scalar                      -- The first field elements that creates a disjoint left coset of H
@@ -72,7 +93,7 @@ makeIsDataIndexed ''PreInputs [('PreInputs,0)]
 -- PreInputsFast are the optimised minimal values that parametrize
 -- a plonk verifier. These values are known before proof
 -- generation.
-data PreInputsFast = PreInputsFast 
+data PreInputsFast = PreInputsFast
     { n'               :: Integer                     -- n number of constraints (upper bound) used
     , pow'             :: Integer                     -- n = 2^pow
     , k1'              :: Scalar                      -- The first field elements that creates a disjoint left coset of H
@@ -96,7 +117,7 @@ makeIsDataIndexed ''PreInputsFast [('PreInputsFast,0)]
 -- Note that the G1 elements are compressed as bytestrings.
 -- The field elements are represented as integers as they are provided 
 -- by the prover and need to be checked to be in the field.
-data ProofFast = ProofFast 
+data ProofFast = ProofFast
     { commitmentA'       :: BuiltinByteString -- a serialized G1 element
     , commitmentB'       :: BuiltinByteString -- a serialized G1 element
     , commitmentC'       :: BuiltinByteString -- a serialized G1 element
@@ -119,7 +140,7 @@ makeLift ''ProofFast
 makeIsDataIndexed ''ProofFast [('ProofFast,0)]
 
 convertToFastPreInputs :: PreInputs -> PreInputsFast
-convertToFastPreInputs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 sSig3 x2 gen ) 
+convertToFastPreInputs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 sSig3 x2 gen )
     = PreInputsFast
     { n'            = 2 Haskell.^ p
     , pow'          = p
@@ -134,11 +155,11 @@ convertToFastPreInputs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sS
     , sSig2'        = sSig2
     , sSig3'        = sSig3
     , x2'           = x2
-    , generators    = map (`scale` gen) (enumFromTo 1 nPub)
-    } 
+    , generators    = map (`scale` gen) (enumFromTo 0 nPub)
+    }
 
-convertToFastProof :: PreInputsFast -> Proof -> ProofFast
-convertToFastProof preInputsFast proof@(Proof ca cb cc cz ctl ctm cth cwo cwz ea eb ec es1 es2 ez)
+convertToFastProof :: PreInputsFast -> [Integer] -> Proof -> ProofFast
+convertToFastProof preInputsFast pubInputs proof@(Proof ca cb cc cz ctl ctm cth cwo cwz ea eb ec es1 es2 ez)
     = ProofFast
     { commitmentA' = ca
     , commitmentB' = cb
@@ -155,18 +176,29 @@ convertToFastProof preInputsFast proof@(Proof ca cb cc cz ctl ctm cth cwo cwz ea
     , sSig1P'      = es1
     , sSig2P'      = es2
     , zOmega'      = ez
-    , lagrangeInverses = let transcript0 = "FS transcriptdom-septesting the provercommitment a" <> ca <> "commitment b" 
-                                                                                                <> cb <> "commitment c" 
-                                                                                                <> cc <> "beta"
-                             beta = Scalar . byteStringToInteger . takeByteString 31 . blake2b_256 $ transcript0
-                             transcript1 = transcript0 <> "gamma"
-                             gamma = Scalar . byteStringToInteger . takeByteString 31 . blake2b_256 $ transcript1
-                             transcript2 = transcript1 <> "Permutation polynomial" <> cz <> "alpha"
-                             alpha = Scalar . byteStringToInteger . takeByteString 31 . blake2b_256 $ transcript2
-                             transcript3 = transcript2 <> "Quotient low polynomial" <> ctl 
-                                                       <> "Quotient mid polynomial" <> ctm 
-                                                       <> "Quotient high polynomial" <> cth 
-                                                       <> "zeta"
-                             zeta = Scalar . byteStringToInteger . takeByteString 31 . blake2b_256 $ transcript3
-                         in map (unScalar . recip . (\x -> mkScalar (n' preInputsFast) * (zeta - x))) $ generators preInputsFast 
+    , lagrangeInverses = let ~betaBs = keccak_256 $ bls12_381_G1_compress (qM' preInputsFast)
+                                        <> bls12_381_G1_compress (qL' preInputsFast)
+                                        <> bls12_381_G1_compress (qR' preInputsFast)
+                                        <> bls12_381_G1_compress (qO' preInputsFast)
+                                        <> bls12_381_G1_compress (qC' preInputsFast)
+                                        <> bls12_381_G1_compress (sSig1' preInputsFast)
+                                        <> bls12_381_G1_compress (sSig2' preInputsFast)
+                                        <> bls12_381_G1_compress (sSig3' preInputsFast)
+                                        <> (reverseByteString . padTo32Bytes . integerToByteString . head) pubInputs
+                                        <> ca
+                                        <> cb
+                                        <> cc
+                             beta = mkScalar $ (byteStringToInteger . reverseByteString) betaBs `modulo` bls12_381_field_prime
+                             ~gammaBs = keccak_256 $ (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) beta
+                             gamma = mkScalar $ (byteStringToInteger . reverseByteString) gammaBs `modulo` bls12_381_field_prime
+                             ~alphaBs = keccak_256 $ (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) beta
+                                        <> (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) gamma
+                                        <> cz
+                             alpha = mkScalar $ (byteStringToInteger . reverseByteString) alphaBs `modulo` bls12_381_field_prime
+                             ~zetaBs = keccak_256 $ (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) alpha
+                                        <> ctl
+                                        <> ctm
+                                        <> cth
+                             zeta = mkScalar $ (byteStringToInteger . reverseByteString) zetaBs `modulo` bls12_381_field_prime
+                         in map (unScalar . recip . (\x -> mkScalar (n' preInputsFast) * (zeta - x))) $ generators preInputsFast
     }

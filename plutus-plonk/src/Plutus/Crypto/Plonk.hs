@@ -10,4 +10,4 @@ import Plutus.Crypto.Plonk.Inputs as X
     , convertToFastProof
     , convertToFastPreInputs)
 import Plutus.Crypto.Plonk.Verifier as X
-    ( verifyPlonkSnarkjs ) 
+    ( verifyPlonkSnarkjs, verifyPlonkFastSnarkjs ) 

@@ -68,6 +68,7 @@ library bench-lib
   hs-source-dirs: src
   exposed-modules: PlutusBenchmark.Verifier.RunVerifier
                    PlutusBenchmark.Verifier.Scripts
+                   PlutusBenchmark.Verifier.Types
                   --  PlutusBenchmark.BlsField.RunBlsField
                   --  PlutusBenchmark.BlsField.Scripts
   build-depends:

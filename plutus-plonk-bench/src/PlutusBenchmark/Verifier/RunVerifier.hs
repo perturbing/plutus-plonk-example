@@ -2,9 +2,9 @@ module PlutusBenchmark.Verifier.RunVerifier
 ( runVerifier
 ) where
 
-import PlutusBenchmark.Verifier.Scripts ( verifyPlonkScriptSnarkjs )
+import PlutusBenchmark.Verifier.Scripts ( verifyPlonkScriptSnarkjsFast, verifyPlonkScriptSnarkjs )
 import PlutusBenchmark.Verifier.Types (  ProofJSONSnarkjs(..), PreInputsJSONSnarkjs(..) )
-import Plutus.Crypto.Plonk (Proof (..), PreInputs (..))
+import Plutus.Crypto.Plonk (Proof (..), PreInputs (..), PreInputsFast, ProofFast, convertToFastProof, convertToFastPreInputs)
 import Plutus.Crypto.BlsUtils (mkScalar, compressG1Point, compressG2Point, mkFp, Fp2 (..))
 
 import PlutusBenchmark.Common ( printHeader, printSizeStatistics, TestSize(NoSize) )
@@ -17,6 +17,11 @@ import Text.Printf (hPrintf)
 import Data.Aeson ( decode )
 
 import qualified Data.ByteString.Lazy as BL
+
+printCostsVerifierPlonkSnarkjsFast :: Handle -> PreInputsFast -> [Integer] -> ProofFast -> IO ()
+printCostsVerifierPlonkSnarkjsFast h preIn pub proof =
+    let script = verifyPlonkScriptSnarkjsFast preIn pub proof
+    in printSizeStatistics h NoSize script
 
 printCostsVerifierPlonkSnarkjs :: Handle -> PreInputs -> [Integer] -> Proof -> IO ()
 printCostsVerifierPlonkSnarkjs h preIn pub proof =
@@ -33,10 +38,17 @@ runVerifier h = do
         Just proof  -> case maybePreIn of
             Just preIn -> do let p = convertProofSnarkjs proof
                              let i = convertPreInputsSnarkjs preIn
+                             let iFast = convertToFastPreInputs i
+                             let pFast = convertToFastProof iFast [20] p
                              hPrintf h "\n\n"
                              hPrintf h "Run slow vanilla plonk verifier\n\n"
                              printHeader h
                              printCostsVerifierPlonkSnarkjs h i [20] p
+                             hPrintf h "\n\n"
+                             hPrintf h "\n\n"
+                             hPrintf h "Run fast vanilla plonk verifier\n\n"
+                             printHeader h
+                             printCostsVerifierPlonkSnarkjsFast h iFast [20] pFast
                              hPrintf h "\n\n"
             Nothing -> print "Could not deserialize PreInputs test vector"
         Nothing -> print "Could not deserialize Proof test vector"

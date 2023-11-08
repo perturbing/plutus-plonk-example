@@ -26,6 +26,7 @@ module Plutus.Crypto.BlsUtils
 , modularExponentiationFp2
 , powerOfTwoExponentiation
 , reverseByteString
+, padTo32Bytes
 ) where
 
 import qualified Prelude as Haskell
@@ -56,41 +57,42 @@ import PlutusTx.Prelude
       not )
 import PlutusTx (makeLift, makeIsDataIndexed, unstableMakeIsData)
 import PlutusTx.Numeric
-    ( AdditiveGroup(..),
-      AdditiveMonoid(..),
-      AdditiveSemigroup(..),
-      Module(..),
-      MultiplicativeMonoid(..),
-      MultiplicativeSemigroup(..), negate )
+    ( AdditiveGroup(..)
+    , AdditiveMonoid(..)
+    , AdditiveSemigroup(..)
+    , Module(..)
+    , MultiplicativeMonoid(..)
+    , MultiplicativeSemigroup(..)
+    , negate )
 import PlutusTx.Builtins
-    ( bls12_381_G1_equals,
-      BuiltinBLS12_381_G1_Element,
-      bls12_381_G1_add,
-      bls12_381_G1_zero,
-      bls12_381_G1_neg,
-      bls12_381_G1_scalarMul,
-      BuiltinBLS12_381_G2_Element,
-      bls12_381_G2_add,
-      bls12_381_G2_scalarMul,
-      bls12_381_G2_neg,
-      bls12_381_G2_zero,
-      BuiltinByteString,
-      integerToByteString,
-      byteStringToInteger,
-      writeBitByteString,
-      shiftByteString,
-      popCountByteString,
-      lengthOfByteString,
-      xorByteString,
-      testBitByteString,
-      consByteString,
-      sliceByteString,
-      emptyByteString,
-      indexByteString,
-      bls12_381_G1_uncompress,
-      bls12_381_G1_compress,
-      bls12_381_G2_uncompress,
-      bls12_381_G2_compress )
+    ( bls12_381_G1_equals
+    , BuiltinBLS12_381_G1_Element
+    , bls12_381_G1_add
+    , bls12_381_G1_zero
+    , bls12_381_G1_neg
+    , bls12_381_G1_scalarMul 
+    , BuiltinBLS12_381_G2_Element
+    , bls12_381_G2_add
+    , bls12_381_G2_scalarMul
+    , bls12_381_G2_neg
+    , bls12_381_G2_zero
+    , BuiltinByteString
+    , integerToByteString
+    , byteStringToInteger
+    , writeBitByteString
+    , shiftByteString
+    , popCountByteString
+    , lengthOfByteString
+    , xorByteString
+    , testBitByteString
+    , consByteString
+    , sliceByteString
+    , emptyByteString
+    , indexByteString
+    , bls12_381_G1_uncompress
+    , bls12_381_G1_compress
+    , bls12_381_G2_uncompress
+    , bls12_381_G2_compress )
 
 -- In this module, we setup the two prime order fields for BLS12-381.
 -- as the type Fp (base points) and Scalar. 
@@ -168,6 +170,13 @@ reverseByteString :: BuiltinByteString -> BuiltinByteString
 reverseByteString ~bs
     | lengthOfByteString bs == 0 = bs
     | otherwise                  = reverseByteString (sliceByteString 1 (lengthOfByteString bs) bs) <> sliceByteString 0 1 bs
+
+{-# INLINABLE padTo32Bytes #-}
+padTo32Bytes :: BuiltinByteString -> BuiltinByteString
+padTo32Bytes ~bs
+    | lengthOfByteString bs == 32 = bs
+    | lengthOfByteString bs < 32  = padTo32Bytes (bs <> consByteString 0 emptyByteString)
+    | otherwise                   = error ()
 
 -- this one costs around 12.1% of cpu budget
 -- while bitshifts modExp cost around 9.6%
