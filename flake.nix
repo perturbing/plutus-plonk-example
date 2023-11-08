@@ -70,7 +70,7 @@
           shell.buildInputs = with nixpkgs.pkgsBuildBuild; [
             # gitAndTools.git
             inputs.blockchain-utils.outputs.packages.${system}.circom
-            inputs.snarkjs-cardano.outputs.packages.${system}.snarkjs-cardano
+            inputs.snarkjs-cardano.defaultPackage.${system}
 
             # sqlite-interactive
           ];
