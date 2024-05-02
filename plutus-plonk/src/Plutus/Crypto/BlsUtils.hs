@@ -137,8 +137,7 @@ instance AdditiveGroup Scalar where
 -- Be sure that you are using this one instead of the one from PlutusTx.Numeric.
 {-# INLINABLE negateScalar #-}
 negateScalar :: Scalar -> Scalar
-negateScalar (Scalar 0) = Scalar 0
-negateScalar (Scalar x) = Scalar $ bls12_381_scalar_prime - x
+negateScalar (Scalar x) = if x == 0 then Scalar 0 else Scalar $ bls12_381_scalar_prime - x
 
 instance MultiplicativeSemigroup Scalar where
     {-# INLINABLE (*) #-}
@@ -278,8 +277,7 @@ instance AdditiveGroup Fp where
 -- Be sure that you are using this one instead of the one from PlutusTx.Numeric.
 {-# INLINABLE negateFp #-}
 negateFp :: Fp -> Fp
-negateFp (Fp 0) = Fp 0
-negateFp (Fp x) = Fp $ bls12_381_base_prime - x
+negateFp (Fp x) = if x == 0 then Fp 0 else Fp $ bls12_381_base_prime - x
 
 instance MultiplicativeSemigroup Fp where
     {-# INLINABLE (*) #-}
