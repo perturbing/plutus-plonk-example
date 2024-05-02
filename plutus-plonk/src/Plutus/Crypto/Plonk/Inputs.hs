@@ -1,9 +1,26 @@
-{-# LANGUAGE TemplateHaskell        #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE OverloadedStrings      #-}
-{-# LANGUAGE ViewPatterns           #-}
--- {-# LANGUAGE Strict                 #-}
+{-# LANGUAGE TemplateHaskell                    #-}
+{-# LANGUAGE ScopedTypeVariables                #-}
+{-# LANGUAGE MultiParamTypeClasses              #-}
+{-# LANGUAGE InstanceSigs                       #-}
+{-# LANGUAGE NamedFieldPuns                     #-}
+{-# LANGUAGE DataKinds                          #-}
+{-# LANGUAGE NoImplicitPrelude                  #-}
+{-# LANGUAGE ViewPatterns                       #-}
+{-# LANGUAGE Strict                             #-}
+{-# LANGUAGE OverloadedStrings                  #-}
+
+{-# OPTIONS_GHC -fno-ignore-interface-pragmas   #-}
+{-# OPTIONS_GHC -fno-omit-interface-pragmas     #-}
+{-# OPTIONS_GHC -fno-full-laziness              #-}
+{-# OPTIONS_GHC -fno-spec-constr                #-}
+{-# OPTIONS_GHC -fno-specialise                 #-}
+{-# OPTIONS_GHC -fno-strictness                 #-}
+{-# OPTIONS_GHC -fno-unbox-strict-fields        #-}
+{-# OPTIONS_GHC -fno-unbox-small-strict-fields  #-}
+
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas       #-}
+{-# HLINT ignore "Use null"                     #-}
+{-# HLINT ignore "Use guards"                   #-}
 
 module Plutus.Crypto.Plonk.Inputs
 ( Proof (..)
@@ -18,7 +35,10 @@ import Plutus.Crypto.BlsUtils
     ( Scalar (..)
     , recip
     , unScalar
-    , mkScalar, reverseByteString, padTo32Bytes, bls12_381_field_prime)
+    , mkScalar
+    , reverseByteString
+    , padTo32Bytes
+    , bls12_381_scalar_prime )
 import PlutusTx.Builtins
     ( BuiltinByteString,
       Integer,
@@ -31,14 +51,18 @@ import PlutusTx.Builtins
       keccak_256,
       bls12_381_G1_compress )
 import PlutusTx (makeLift, makeIsDataIndexed, unstableMakeIsData)
-import PlutusTx.Numeric (AdditiveGroup (..), scale, (*))
+import PlutusTx.Numeric (AdditiveGroup (..), scale, (*), (+))
 import PlutusTx.Prelude
     ( map
     , (.)
     , ($)
     , (<>)
     , enumFromTo
-    , takeByteString, head, modulo)
+    , takeByteString
+    , head
+    , modulo )
+
+import GHC.ByteOrder ( ByteOrder(..) )
 
 import qualified Prelude as Haskell
 
@@ -184,21 +208,21 @@ convertToFastProof preInputsFast pubInputs proof@(Proof ca cb cc cz ctl ctm cth 
                                         <> bls12_381_G1_compress (sSig1' preInputsFast)
                                         <> bls12_381_G1_compress (sSig2' preInputsFast)
                                         <> bls12_381_G1_compress (sSig3' preInputsFast)
-                                        <> (reverseByteString . padTo32Bytes . integerToByteString . head) pubInputs
+                                        <> (integerToByteString BigEndian 32 . head) pubInputs
                                         <> ca
                                         <> cb
                                         <> cc
-                             beta = mkScalar $ (byteStringToInteger . reverseByteString) betaBs `modulo` bls12_381_field_prime
-                             ~gammaBs = keccak_256 $ (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) beta
-                             gamma = mkScalar $ (byteStringToInteger . reverseByteString) gammaBs `modulo` bls12_381_field_prime
-                             ~alphaBs = keccak_256 $ (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) beta
-                                        <> (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) gamma
+                             beta = mkScalar $ byteStringToInteger BigEndian  betaBs `modulo` bls12_381_scalar_prime
+                             ~gammaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
+                             gamma = mkScalar $ byteStringToInteger BigEndian  gammaBs `modulo` bls12_381_scalar_prime
+                             ~alphaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
+                                        <> (integerToByteString BigEndian 32 . unScalar ) gamma
                                         <> cz
-                             alpha = mkScalar $ (byteStringToInteger . reverseByteString) alphaBs `modulo` bls12_381_field_prime
-                             ~zetaBs = keccak_256 $ (reverseByteString . padTo32Bytes . integerToByteString . unScalar ) alpha
+                             alpha = mkScalar $ byteStringToInteger BigEndian alphaBs `modulo` bls12_381_scalar_prime
+                             ~zetaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) alpha
                                         <> ctl
                                         <> ctm
                                         <> cth
-                             zeta = mkScalar $ (byteStringToInteger . reverseByteString) zetaBs `modulo` bls12_381_field_prime
+                             zeta = mkScalar $ byteStringToInteger BigEndian zetaBs `modulo` bls12_381_scalar_prime
                          in map (unScalar . recip . (\x -> mkScalar (n' preInputsFast) * (zeta - x))) $ generators preInputsFast
     }

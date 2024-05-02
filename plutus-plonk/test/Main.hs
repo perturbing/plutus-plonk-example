@@ -3,8 +3,12 @@ module Main
 ) where
 
 import Types ( ProofJSONSnarkjs(..), PreInputsJSONSnarkjs(..) )
-import Plutus.Crypto.Plonk (Proof (..), PreInputs (..), verifyPlonkSnarkjs, convertToFastProof, convertToFastPreInputs, verifyPlonkFastSnarkjs)
-import Plutus.Crypto.BlsUtils (mkScalar, compressG1Point, compressG2Point, mkFp, Fp2 (..))
+import Plutus.Crypto.Plonk (Proof (..), PreInputs (..), verifyPlonkSnarkjs, ProofFast (..), PreInputsFast(..), convertToFastProof, convertToFastPreInputs, verifyPlonkFastSnarkjs)
+import Plutus.Crypto.BlsUtils (mkScalar, Fp(..), mkFp, Fp2 (..))
+import Offchain (compressG1Point, compressG2Point)
+import PlutusTx.Builtins (integerToByteString, byteStringToInteger, bls12_381_G1_compressed_zero, bls12_381_G1_compressed_generator)
+import GHC.ByteOrder ( ByteOrder(..) )
+import Data.Bits (testBit, setBit)
 
 import qualified PlutusTx.Prelude as P
 
@@ -13,7 +17,7 @@ import Data.Aeson ( decode )
 import qualified Data.ByteString.Lazy as BL
 
 main :: IO ()
-main = do
+main = do 
     jsonDataProof <- BL.readFile "test-vectors/example/proof.json"
     jsonDataPreIn <- BL.readFile "test-vectors/setup/verification_key.json"
     let maybeProof = decode jsonDataProof :: Maybe ProofJSONSnarkjs

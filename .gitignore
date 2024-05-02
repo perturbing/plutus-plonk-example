@@ -21,3 +21,9 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+local-testnet/example
+local-testnet/logs
+x509-cert-example/orchestrator
+
+# nix
+result*
