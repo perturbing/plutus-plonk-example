@@ -9,9 +9,10 @@ module Types
 )where
 
 import Data.Aeson.TH
-    ( defaultOptions, Options(fieldLabelModifier), deriveFromJSON )
+    ( defaultOptions
+    , Options(fieldLabelModifier)
+    , deriveFromJSON )
 import GHC.Generics ( Generic )
-
 
 data ProofJSONSnarkjs = ProofJSONSnarkjs 
   { a        :: [String]

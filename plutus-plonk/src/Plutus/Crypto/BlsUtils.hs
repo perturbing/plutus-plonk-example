@@ -1,108 +1,100 @@
-{-# LANGUAGE NoImplicitPrelude      #-}
-{-# LANGUAGE TemplateHaskell        #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE InstanceSigs           #-}
-{-# LANGUAGE Strict                 #-}
+{-# LANGUAGE TemplateHaskell                    #-}
+{-# LANGUAGE ScopedTypeVariables                #-}
+{-# LANGUAGE MultiParamTypeClasses              #-}
+{-# LANGUAGE InstanceSigs                       #-}
+{-# LANGUAGE NamedFieldPuns                     #-}
+{-# LANGUAGE DataKinds                          #-}
+{-# LANGUAGE NoImplicitPrelude                  #-}
+{-# LANGUAGE ViewPatterns                       #-}
+{-# LANGUAGE Strict                             #-}
+{-# LANGUAGE OverloadedStrings                  #-}
+
+{-# OPTIONS_GHC -fno-ignore-interface-pragmas   #-}
+{-# OPTIONS_GHC -fno-omit-interface-pragmas     #-}
+{-# OPTIONS_GHC -fno-full-laziness              #-}
+{-# OPTIONS_GHC -fno-spec-constr                #-}
+{-# OPTIONS_GHC -fno-specialise                 #-}
+{-# OPTIONS_GHC -fno-strictness                 #-}
+{-# OPTIONS_GHC -fno-unbox-strict-fields        #-}
+{-# OPTIONS_GHC -fno-unbox-small-strict-fields  #-}
+
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas       #-}
+{-# HLINT ignore "Use null"                     #-}
+{-# HLINT ignore "Use guards"                   #-}
 
 module Plutus.Crypto.BlsUtils
 ( bls12_381_base_prime
-, Fp
-, unFp
-, mkFp
-, compressG1Point
-, unCompressG1Point
-, Fp2 (..)
-, compressG2Point
-, unCompressG2Point
-, bls12_381_field_prime
+, bls12_381_scalar_prime
+, MultiplicativeGroup (..)
+-- Scalar type and functions
 , Scalar (..)
 , mkScalar
-, MultiplicativeGroup (..)
-, pow
-, powMod
-, modularExponentiationScalar
-, modularExponentiationFp
-, modularExponentiationFp2
-, powerOfTwoExponentiation
-, reverseByteString
-, padTo32Bytes
+, powModScalar
+, powerOfTwoExponentiationScalar
+, negateScalar
+-- Fp type and functions
+, Fp (..)
+, mkFp
+, powModFp
+, powerOfTwoExponentiationFp
+, negateFp
+-- Fp2 type and functions
+, Fp2 (..)
+, powModFp2
+, powerOfTwoExponentiationFp2
+, negateFp2
 ) where
 
 import qualified Prelude as Haskell
 import PlutusTx.Prelude
-    ( otherwise,
-      Integer,
+    ( Integer,
       ($),
       (&&),
       error,
       modulo,
       Eq(..),
-      AdditiveGroup(..),
-      AdditiveMonoid(..),
-      AdditiveSemigroup(..),
-      Module(..),
-      MultiplicativeMonoid(..),
-      MultiplicativeSemigroup(..),
       Ord((<), (<=)),
-      dropByteString,
       (<>),
       even,
       divide, 
-      foldr,
       Bool (..),
       (.),
       (>),
       (||),
       not )
-import PlutusTx (makeLift, makeIsDataIndexed, unstableMakeIsData)
+import PlutusTx ( makeLift, makeIsDataIndexed, unstableMakeIsData )
 import PlutusTx.Numeric
     ( AdditiveGroup(..)
     , AdditiveMonoid(..)
     , AdditiveSemigroup(..)
     , Module(..)
     , MultiplicativeMonoid(..)
-    , MultiplicativeSemigroup(..)
-    , negate )
+    , MultiplicativeSemigroup(..) )
 import PlutusTx.Builtins
-    ( bls12_381_G1_equals
-    , BuiltinBLS12_381_G1_Element
+    ( BuiltinBLS12_381_G1_Element
+    , BuiltinBLS12_381_G2_Element
     , bls12_381_G1_add
-    , bls12_381_G1_zero
+    , bls12_381_G1_compressed_zero
     , bls12_381_G1_neg
     , bls12_381_G1_scalarMul 
-    , BuiltinBLS12_381_G2_Element
     , bls12_381_G2_add
     , bls12_381_G2_scalarMul
     , bls12_381_G2_neg
-    , bls12_381_G2_zero
-    , BuiltinByteString
-    , integerToByteString
-    , byteStringToInteger
-    , writeBitByteString
-    , shiftByteString
-    , popCountByteString
-    , lengthOfByteString
-    , xorByteString
-    , testBitByteString
-    , consByteString
-    , sliceByteString
-    , emptyByteString
-    , indexByteString
+    , bls12_381_G2_compressed_zero
     , bls12_381_G1_uncompress
     , bls12_381_G1_compress
     , bls12_381_G2_uncompress
     , bls12_381_G2_compress )
 
 -- In this module, we setup the two prime order fields for BLS12-381.
--- as the type Fp (base points) and Scalar. 
+-- as the type Fp/Fp2 (base points) and Scalar. 
 -- Note that for safety, both the Scalar and Fp constructors
 -- are not exposed. Instead, the mkScalar and mkFp suffice, 
 -- which fail in a script if an integer provided that is negative.
 
 -- The prime order of the generator in the field. So, g^order = id,
-bls12_381_field_prime :: Integer
-bls12_381_field_prime = 52435875175126190479447740508185965837690552500527637822603658699938581184513
+bls12_381_scalar_prime :: Integer
+bls12_381_scalar_prime = 52435875175126190479447740508185965837690552500527637822603658699938581184513
 
 -- The prime of the base field. So for a g on the curve, its 
 -- x and y coordinates are elements of the base field.
@@ -115,12 +107,11 @@ makeIsDataIndexed ''Scalar [('Scalar,0)]
 
 -- Exclude for safety negative integers and integers large/equal
 -- to the field prime. This is the primary interface to work with
--- the Scalar type onchain. This is for security reasons 
--- (to make sure they are field elements).
+-- the Scalar type onchain. This is for security reasons,
+-- to make sure provided objects are field elements.
 {-# INLINABLE mkScalar #-}
 mkScalar :: Integer -> Scalar
-mkScalar n | 0 <= n && n < bls12_381_field_prime = Scalar n
-           | otherwise                           = error ()
+mkScalar n = if 0 <= n && n < bls12_381_scalar_prime then Scalar n else error ()
 
 instance Eq Scalar where
     {-# INLINABLE (==) #-}
@@ -128,90 +119,134 @@ instance Eq Scalar where
 
 instance AdditiveSemigroup Scalar where
     {-# INLINABLE (+) #-}
-    (+) (Scalar a) (Scalar b) = Scalar $ (a+b) `modulo` bls12_381_field_prime
+    (+) (Scalar a) (Scalar b) = Scalar $ (a+b) `modulo` bls12_381_scalar_prime
 
 instance AdditiveMonoid Scalar where
     {-# INLINABLE zero #-}
     zero = Scalar 0
 
+-- Note that PlutusTx.Numeric implements negate for an additive group. This is
+-- canonically defined as zero - x. But not that a more efficient way to do it
+-- in plutus is by calculating it as: inv (Scalar x) = Scalar $ bls12_381_scalar_prime - x
+-- saving a modulo operation (not considering 0 here).
 instance AdditiveGroup Scalar where
     {-# INLINABLE (-) #-}
-    (-) (Scalar a) (Scalar b) = Scalar $ (a-b) `modulo` bls12_381_field_prime
+    (-) (Scalar a) (Scalar b) = Scalar $ (a-b) `modulo` bls12_381_scalar_prime
+
+-- This is a more efficient way to calculate the additive inverse
+-- Be sure that you are using this one instead of the one from PlutusTx.Numeric.
+{-# INLINABLE negateScalar #-}
+negateScalar :: Scalar -> Scalar
+negateScalar (Scalar x) = if x == 0 then Scalar 0 else Scalar $ bls12_381_scalar_prime - x
 
 instance MultiplicativeSemigroup Scalar where
     {-# INLINABLE (*) #-}
-    (*) (Scalar a) (Scalar b) = Scalar $ (a*b) `modulo` bls12_381_field_prime
+    (*) (Scalar a) (Scalar b) = Scalar $ (a*b) `modulo` bls12_381_scalar_prime
 
 instance MultiplicativeMonoid Scalar where
     {-# INLINABLE one #-}
     one = Scalar 1
 
--- In plutus 1.9, PlutusTx.Numeric does not implement a Multiplicative group.
--- But since we use a field, inversion is well-defined if we exclude 0.
+-- Since plutus 1.9, PlutusTx.Numeric does not implement a Multiplicative group anymore.
+-- But since we use a field, multiplicative inversion is well-defined if we exclude 0.
 -- We also implement the reciprocal (the multiplicative inverse of an element in the group).
--- For the additive group, there is negate function in PlutusTx.Numeric.
+-- For the additive group, there is negate function in PlutusTx.Numeric for the additive inverse.
 class MultiplicativeMonoid a => MultiplicativeGroup a where
     div :: a -> a -> a
     recip :: a -> a
 
--- Modular exponentiation by squaring. This assumes that the exponent is
--- a big endian bytestring. Note that integegerToByteString is little endian.
-{-# INLINABLE modularExponentiationScalar #-}
-modularExponentiationScalar :: Scalar -> BuiltinByteString -> Scalar
-modularExponentiationScalar b ~e
-    | e == emptyByteString = one
-    | otherwise            = t * modularExponentiationScalar (b*b) (sliceByteString 1 (lengthOfByteString e) e)
-        where t = if testBitByteString e 0 then b else one
+-- Scaling a base and exponent via squaring. As an alternative, see CIP 109.
+{-# INLINABLE powModScalar #-}
+powModScalar :: Scalar -> Integer -> Scalar
+powModScalar b e = 
+    if e < 0 then zero
+    else if e == 0 then one
+    else if even e then powModScalar (b * b) (e `divide` 2)
+    else b * powModScalar (b * b) ((e - 1) `divide` 2)
 
--- Reverse a builtin byte string of arbitrary length
--- This can convert between little and big endian.
-{-# INLINABLE reverseByteString #-}
-reverseByteString :: BuiltinByteString -> BuiltinByteString
-reverseByteString ~bs
-    | lengthOfByteString bs == 0 = bs
-    | otherwise                  = reverseByteString (sliceByteString 1 (lengthOfByteString bs) bs) <> sliceByteString 0 1 bs
+-- The extended euclidean algorithm to calculate the gcd of two numbers (returns bezout's identity)
+{-# INLINABLE extendedEuclidean #-}
+extendedEuclidean :: Integer -> Integer -> (Integer, Integer, Integer)
+extendedEuclidean a b = 
+    if a == 0 then (b,0,1) 
+    else let (gcd,x1,y1) = extendedEuclidean (b `modulo` a) a
+             x = y1 - b `divide` a * x1
+         in (gcd, x, x1)
 
-{-# INLINABLE padTo32Bytes #-}
-padTo32Bytes :: BuiltinByteString -> BuiltinByteString
-padTo32Bytes ~bs
-    | lengthOfByteString bs == 32 = bs
-    | lengthOfByteString bs < 32  = padTo32Bytes (bs <> consByteString 0 emptyByteString)
-    | otherwise                   = error ()
-
--- this one costs around 12.1% of cpu budget
--- while bitshifts modExp cost around 9.6%
-{-# INLINABLE powMod #-}
-powMod :: Scalar -> Integer -> Scalar
-powMod b e
-    | e < 0     = zero
-    | e == 0    = one
-    | even e   = powMod (b*b) (e `divide` 2)
-    | otherwise = b * powMod (b*b) ((e - 1) `divide` 2)
+-- Calculate the multiplicative inverse (recipricol) of a number a modulo m. If this does not exist,
+-- the script will throw an error.
+{-# INLINABLE multiplicativeInverse #-}
+multiplicativeInverse :: Integer -> Integer -> Integer
+multiplicativeInverse m a = let (gcd, x, _) = extendedEuclidean a m in
+    if gcd == 1 then ((x `modulo` m) + m) `modulo` m else error ()
 
 -- In math this is b^a mod p, where b is of type scalar and a any integer
--- note that there is still some overhead here due to the conversion from
--- little endian to big endian (and bs <-> integer). This can be
--- optimized in the future.
 instance Module Integer Scalar where
     {-# INLINABLE scale #-}
     scale :: Integer -> Scalar -> Scalar
-    scale e b = powMod b e --modularExponentiationScalar b (reverseByteString (integerToByteString e)) -- powMod b a is also a correct implementation
+    scale e b = powModScalar b e 
 
+-- Implementing the multiplicative group for the scalar type via Fermat's little theorem
+-- note that division by zero is not possible.
+-- instance MultiplicativeGroup Scalar where
+--     {-# INLINABLE div #-}
+--     div a b =
+--         if b == Scalar 0 then error ()
+--         else a * scale (bls12_381_scalar_prime - 2) b
+--     {-# INLINABLE recip #-}
+--     recip = div one
+
+-- Implementing the multiplicative group for the scalar type via extended euclidean method
 instance MultiplicativeGroup Scalar where
-    {-# INLINABLE div #-}
-    div a b | b == Scalar 0 = error ()
-            | otherwise     = a * scale (bls12_381_field_prime - 2) b -- use Fermat little theorem
     {-# INLINABLE recip #-}
-    recip = div one
+    recip (Scalar a) = Scalar $ multiplicativeInverse bls12_381_scalar_prime a
+    {-# INLINABLE div #-}
+    div a b = a * recip b
 
 -- This is a special case of modular exponentiation, where the exponent is a power of two.
--- This saves alot of script budget. Note that for x^e,  e = 2^k, and k is used below
-{-# INLINABLE powerOfTwoExponentiation #-}
-powerOfTwoExponentiation :: Scalar -> Integer -> Scalar
-powerOfTwoExponentiation x k = if k < 0 then error () else go x k
-    where go x' k'
-            | k' == 0    = x'
-            | otherwise = powerOfTwoExponentiation (x'*x') (k' - 1)
+-- This saves alot of script budget. Here we mean for x^e, that e = 2^k
+{-# INLINABLE powerOfTwoExponentiationScalar #-}
+powerOfTwoExponentiationScalar :: Scalar -> Integer -> Scalar
+powerOfTwoExponentiationScalar x k = if k < 0 then error () else go x k
+    where go x' k' =
+            if k' == 0 then x'
+            else powerOfTwoExponentiationScalar (x'*x') (k' - 1)
+
+-- Implementing an additive group for both the G1 and G2 elements.
+
+instance AdditiveSemigroup BuiltinBLS12_381_G1_Element where
+    {-# INLINABLE (+) #-}
+    (+) = bls12_381_G1_add
+
+instance AdditiveMonoid BuiltinBLS12_381_G1_Element where
+    {-# INLINABLE zero #-}
+    zero = bls12_381_G1_uncompress bls12_381_G1_compressed_zero
+
+instance AdditiveGroup BuiltinBLS12_381_G1_Element where
+    {-# INLINABLE (-) #-}
+    (-) a b = a + bls12_381_G1_neg b
+
+instance Module Scalar BuiltinBLS12_381_G1_Element where
+    {-# INLINABLE scale #-}
+    scale (Scalar a) = bls12_381_G1_scalarMul a
+
+instance AdditiveSemigroup BuiltinBLS12_381_G2_Element where
+    {-# INLINABLE (+) #-}
+    (+) = bls12_381_G2_add
+
+instance AdditiveMonoid BuiltinBLS12_381_G2_Element where
+    {-# INLINABLE zero #-}
+    zero = bls12_381_G2_uncompress bls12_381_G2_compressed_zero
+
+instance AdditiveGroup BuiltinBLS12_381_G2_Element where
+    {-# INLINABLE (-) #-}
+    (-) a b = a + bls12_381_G2_neg b
+
+instance Module Scalar BuiltinBLS12_381_G2_Element where
+    {-# INLINABLE scale #-}
+    scale (Scalar a) = bls12_381_G2_scalarMul a
+
+-- Implementing the base field Fp.
 
 -- The field elements are the x and y coordinates of the points on the curve.
 newtype Fp = Fp { unFp :: Integer} deriving (Haskell.Show)
@@ -220,8 +255,7 @@ makeIsDataIndexed ''Fp [('Fp ,0)]
 
 {-# INLINABLE mkFp #-}
 mkFp :: Integer -> Fp
-mkFp n | 0 <= n && n < bls12_381_base_prime = Fp n
-       | otherwise                          = error ()
+mkFp n = if 0 <= n && n < bls12_381_base_prime then Fp n else error ()
 
 instance Eq Fp where
     {-# INLINABLE (==) #-}
@@ -239,6 +273,12 @@ instance AdditiveGroup Fp where
     {-# INLINABLE (-) #-}
     (-) (Fp a) (Fp b) = Fp $ (a-b) `modulo` bls12_381_base_prime
 
+-- This is a more efficient way to calculate the additive inverse
+-- Be sure that you are using this one instead of the one from PlutusTx.Numeric.
+{-# INLINABLE negateFp #-}
+negateFp :: Fp -> Fp
+negateFp (Fp x) = if x == 0 then Fp 0 else Fp $ bls12_381_base_prime - x
+
 instance MultiplicativeSemigroup Fp where
     {-# INLINABLE (*) #-}
     (*) (Fp a) (Fp b) = Fp $ (a*b) `modulo` bls12_381_base_prime
@@ -247,24 +287,45 @@ instance MultiplicativeMonoid Fp where
     {-# INLINABLE one #-}
     one = Fp 1
 
-{-# INLINABLE modularExponentiationFp #-}
-modularExponentiationFp :: Fp -> BuiltinByteString -> Fp
-modularExponentiationFp b e
-    | popCountByteString e == 0  = one
-    | otherwise = t * modularExponentiationFp (b*b) (shiftByteString e (-1))
-                where t = if testBitByteString e 0 then b else one
+-- Scaling a base and exponent via squaring. As an alternative, see CIP 109.
+{-# INLINABLE powModFp #-}
+powModFp :: Fp -> Integer -> Fp
+powModFp b e = 
+    if e < 0 then zero
+    else if e == 0 then one
+    else if even e then powModFp (b * b) (e `divide` 2)
+    else b * powModFp (b * b) ((e - 1) `divide` 2)
 
 instance Module Integer Fp where
     {-# INLINABLE scale #-}
     scale :: Integer -> Fp -> Fp
-    scale a b = modularExponentiationFp b (reverseByteString (integerToByteString a))
+    scale e b = powModFp b e
 
+-- Implementing the multiplicative group for the Fp type via Fermat's little theorem
+-- note that division by zero is not possible.
+-- instance MultiplicativeGroup Fp where
+--     {-# INLINABLE div #-}
+--     div a b = 
+--         if b == Fp 0 then error ()
+--         else a * scale (bls12_381_base_prime - 2) b
+--     {-# INLINABLE recip #-}
+--     recip = div one
+
+-- Implementing the multiplicative group for the Fp type via extended euclidean method
 instance MultiplicativeGroup Fp where
-    {-# INLINABLE div #-}
-    div a b | b == Fp 0     = error ()
-            | otherwise     = a * scale (bls12_381_base_prime - 2) b -- use Fermat little theorem
     {-# INLINABLE recip #-}
-    recip = div one
+    recip (Fp a) = Fp $ multiplicativeInverse bls12_381_base_prime a
+    {-# INLINABLE div #-}
+    div a b = a * recip b
+
+-- This is a special case of modular exponentiation, where the exponent is a power of two.
+-- This saves alot of script budget. Here we mean for x^e, that e = 2^k
+{-# INLINABLE powerOfTwoExponentiationFp #-}
+powerOfTwoExponentiationFp :: Fp -> Integer -> Fp
+powerOfTwoExponentiationFp x k = if k < 0 then error () else go x k
+    where go x' k' =
+            if k' == 0 then x'
+            else powerOfTwoExponentiationFp (x'*x') (k' - 1)
 
 instance Ord Fp where
     {-# INLINABLE (<) #-}
@@ -277,35 +338,9 @@ instance Ord Fp where
     -- {-# INLINABLE (>=) #-}
     -- Fp a >= Fp b = a >= b
 
+-- Implementing the base field Fp2
 
-{-# INLINABLE compressG1Point #-}
-compressG1Point :: (Fp, Fp) -> BuiltinBLS12_381_G1_Element
-compressG1Point (x, y)
-    | x == zero && y == one = bls12_381_G1_zero
-    | otherwise             = go ((setCompressedBit . fixLengthBs . integerToByteString. unFp) x) y
-        where fixLengthBs :: BuiltinByteString -> BuiltinByteString
-              fixLengthBs bs
-                | lengthOfByteString bs == 48 = bs
-                | otherwise                   = fixLengthBs (bs <> consByteString 0 emptyByteString)
-              setCompressedBit x = bls12_381_G1_uncompress $ reverseByteString (writeBitByteString x 7 True)
-              go :: BuiltinBLS12_381_G1_Element -> Fp -> BuiltinBLS12_381_G1_Element
-              go p y'
-                | y' < negate y' = p
-                | otherwise      = bls12_381_G1_neg p
-
-{-# INLINABLE unCompressG1Point #-}
-unCompressG1Point :: BuiltinBLS12_381_G1_Element -> (Fp, Fp)
-unCompressG1Point p
-    | p == bls12_381_G1_zero = (zero, one)
-    | otherwise              = (x, y')
-        where p' = reverseByteString . bls12_381_G1_compress $ p
-              thirdBit = testBitByteString p' 5
-              x = Fp . byteStringToInteger $ foldr (\i acc -> writeBitByteString acc i False) p' [7,6,5]
-              y = scale ((bls12_381_base_prime + 1) `divide` 4) (x * x * x + Fp 4)
-              y' = if (thirdBit && y < negate y) || (not thirdBit && y > negate y) then negate y else y
-
-
--- The field elements are the x and y coordinates of the points on the curve.
+-- The field elements are the x and y coordinates of the points on the complexified curve.
 data Fp2 = Fp2
     { c0 :: Fp
     , c1 :: Fp
@@ -329,6 +364,13 @@ instance AdditiveGroup Fp2 where
     {-# INLINABLE (-) #-}
     (-) (Fp2 a b) (Fp2 c d) = Fp2 (a-c) (b-d)
 
+-- This is a more efficient way to calculate the additive inverse
+-- Be sure that you are using this one instead of the one from PlutusTx.Numeric.
+{-# INLINABLE negateFp2 #-}
+negateFp2 :: Fp2 -> Fp2
+negateFp2 (Fp2 a b) = Fp2 (negateFp a) (negateFp b)
+
+-- note that we perform complex multiplication here!
 instance MultiplicativeSemigroup Fp2 where
     {-# INLINABLE (*) #-}
     (*) (Fp2 a b) (Fp2 c d) = Fp2 (a*c - b*d) (a*d + b*c)
@@ -337,33 +379,40 @@ instance MultiplicativeMonoid Fp2 where
     {-# INLINABLE one #-}
     one = Fp2 one zero
 
-{-# INLINABLE pow #-}
-pow :: Integer -> Integer -> Integer
-pow b e
-    | e < 0     = zero
-    | e == 0    = 1
-    | even e    = pow (b*b) (e `divide` 2)
-    | otherwise = b * pow (b*b) ((e - 1) `divide` 2)
-
-{-# INLINABLE modularExponentiationFp2 #-}
-modularExponentiationFp2 :: Fp2 -> BuiltinByteString -> Fp2
-modularExponentiationFp2 b e
-    | popCountByteString e == 0  = one
-    | otherwise = t * modularExponentiationFp2 (b*b) (shiftByteString e (-1))
-                where t = if testBitByteString e 0 then b else one
+-- Scaling a base and exponent via squaring. As an alternative, see CIP 109.
+{-# INLINABLE powModFp2 #-}
+powModFp2 :: Fp2 -> Integer -> Fp2
+powModFp2 b e = 
+    if e < 0 then zero
+    else if e == 0 then one
+    else if even e then powModFp2 (b * b) (e `divide` 2)
+    else b * powModFp2 (b * b) ((e - 1) `divide` 2)
 
 instance Module Integer Fp2 where
     {-# INLINABLE scale #-}
     scale :: Integer -> Fp2 -> Fp2
-    scale a b = modularExponentiationFp2 b (reverseByteString (integerToByteString a))
+    scale e b = powModFp2 b e
 
+-- Implementing the multiplicative group for the Fp2 type via Fermat's little theorem
+-- note that division by zero is not possible.
 instance MultiplicativeGroup Fp2 where
     {-# INLINABLE div #-}
-    div a b | b == zero     = error ()
-            | otherwise     = a * recip b
+    div a b = 
+        if b == zero then error ()
+        else a * recip b
     {-# INLINABLE recip #-}
-    recip (Fp2 a b) = Fp2 (a `div` norm) (negate b `div` norm)
+    -- this is the complex reciprocal
+    recip (Fp2 a b) = Fp2 (a `div` norm) (negateFp b `div` norm)
         where norm = a*a + b*b
+
+-- This is a special case of modular exponentiation, where the exponent is a power of two.
+-- This saves alot of script budget. Here we mean for x^e, that e = 2^k
+{-# INLINABLE powerOfTwoExponentiationFp2 #-}
+powerOfTwoExponentiationFp2 :: Fp2 -> Integer -> Fp2
+powerOfTwoExponentiationFp2 x k = if k < 0 then error () else go x k
+    where go x' k' =
+            if k' == 0 then x'
+            else powerOfTwoExponentiationFp2 (x'*x') (k' - 1)
 
 instance Ord Fp2 where
     {-# INLINABLE (<) #-}
@@ -376,72 +425,3 @@ instance Ord Fp2 where
     Fp2 a b > Fp2 c d = a > c || (a == c && b > d)
     -- {-# INLINABLE (>=) #-}
     -- Fp2 a b >= Fp2 c d =
-
-{-# INLINABLE compressG2Point #-}
-compressG2Point :: (Fp2,Fp2) -> BuiltinBLS12_381_G2_Element
-compressG2Point (x, y)
-    | x == zero && y == one = bls12_381_G2_zero
-    | otherwise             = go (bls12_381_G2_uncompress xBsG2) y
-    where x' = unFp (c0 x) + unFp (c1 x) * pow 2 384
-          fixLengthBs :: BuiltinByteString -> BuiltinByteString
-          fixLengthBs bs
-                | lengthOfByteString bs == 96 = bs
-                | otherwise                   = fixLengthBs (bs <> consByteString 0 emptyByteString)
-          xBsG2 = reverseByteString $ writeBitByteString ((fixLengthBs . integerToByteString) x') 7 True
-          go :: BuiltinBLS12_381_G2_Element -> Fp2 -> BuiltinBLS12_381_G2_Element
-          go x y
-            | y < negate y   = x
-            | otherwise      = bls12_381_G2_neg x
-
--- This function is for testing only, as the sqrt over Fp used the expensive scale function
--- so it will cost around 20% of the script cpu budget.
-{-# INLINABLE unCompressG2Point #-}
-unCompressG2Point :: BuiltinBLS12_381_G2_Element -> (Fp2, Fp2)
-unCompressG2Point p
-    | p == bls12_381_G2_zero = (zero, one)
-    | otherwise              = (x, y')
-        where p' = reverseByteString . bls12_381_G2_compress $ p
-              thirdBit = testBitByteString p' 5
-              xBs = foldr (\i acc -> writeBitByteString acc i False) p' [7,6,5]
-              x = Fp2 (Fp . byteStringToInteger $ sliceByteString 0 48 xBs) (Fp . byteStringToInteger $ sliceByteString 48 96 xBs)
-              Fp2 c d = x * x * x + Fp2 (Fp 4) (Fp 4)
-              sqrt :: Fp -> Fp
-              sqrt = scale ((bls12_381_base_prime + 1) `divide` 4)
-              a = sqrt ((c + sqrt (c * c + d * d)) `div` Fp 2)
-              b' = sqrt ((negate c + sqrt (c * c + d * d)) `div` Fp 2)
-              b = if a * b' * Fp 2 == d then b' else negate b'
-              y = Fp2 a b
-              y' = if thirdBit && y < negate y then negate y else y
-
-
-instance AdditiveSemigroup BuiltinBLS12_381_G1_Element where
-    {-# INLINABLE (+) #-}
-    (+) = bls12_381_G1_add
-
-instance AdditiveMonoid BuiltinBLS12_381_G1_Element where
-    {-# INLINABLE zero #-}
-    zero = bls12_381_G1_zero
-
-instance AdditiveGroup BuiltinBLS12_381_G1_Element where
-    {-# INLINABLE (-) #-}
-    (-) a b = a + bls12_381_G1_neg b
-
-instance Module Scalar BuiltinBLS12_381_G1_Element where
-    {-# INLINABLE scale #-}
-    scale (Scalar a) = bls12_381_G1_scalarMul a
-
-instance AdditiveSemigroup BuiltinBLS12_381_G2_Element where
-    {-# INLINABLE (+) #-}
-    (+) = bls12_381_G2_add
-
-instance AdditiveMonoid BuiltinBLS12_381_G2_Element where
-    {-# INLINABLE zero #-}
-    zero = bls12_381_G2_zero
-
-instance AdditiveGroup BuiltinBLS12_381_G2_Element where
-    {-# INLINABLE (-) #-}
-    (-) a b = a + bls12_381_G2_neg b
-
-instance Module Scalar BuiltinBLS12_381_G2_Element where
-    {-# INLINABLE scale #-}
-    scale (Scalar a) = bls12_381_G2_scalarMul a

@@ -3,17 +3,30 @@ module Main
 ) where
 
 import Types ( ProofJSONSnarkjs(..), PreInputsJSONSnarkjs(..) )
-import Plutus.Crypto.Plonk (Proof (..), PreInputs (..), verifyPlonkSnarkjs, convertToFastProof, convertToFastPreInputs, verifyPlonkFastSnarkjs)
-import Plutus.Crypto.BlsUtils (mkScalar, compressG1Point, compressG2Point, mkFp, Fp2 (..))
-
+import Plutus.Crypto.Plonk 
+    ( Proof (..)
+    , PreInputs (..)
+    , verifyPlonkSnarkjs
+    , ProofFast (..)
+    , PreInputsFast(..)
+    , convertToFastProof
+    , convertToFastPreInputs
+    , verifyPlonkFastSnarkjs )
+import Plutus.Crypto.BlsUtils ( mkScalar, Fp(..), mkFp, Fp2 (..) )
+import Offchain (compressG1Point, compressG2Point)
+import PlutusTx.Builtins 
+    ( integerToByteString
+    , byteStringToInteger
+    , bls12_381_G1_compressed_zero
+    , bls12_381_G1_compressed_generator )
+import GHC.ByteOrder ( ByteOrder(..) )
+import Data.Bits ( testBit, setBit )
 import qualified PlutusTx.Prelude as P
-
 import Data.Aeson ( decode )
-
 import qualified Data.ByteString.Lazy as BL
 
 main :: IO ()
-main = do
+main = do 
     jsonDataProof <- BL.readFile "test-vectors/example/proof.json"
     jsonDataPreIn <- BL.readFile "test-vectors/setup/verification_key.json"
     let maybeProof = decode jsonDataProof :: Maybe ProofJSONSnarkjs
@@ -66,19 +79,20 @@ convertProofSnarkjs proof =
 convertPreInputsSnarkjs :: PreInputsJSONSnarkjs -> PreInputs
 convertPreInputsSnarkjs preIn =
     let h x = read x :: Integer
+        f x = P.bls12_381_G1_compress $ readPointG1 x
     in PreInputs
     { nPublic   = nPublic' preIn
     , power     = power' preIn
     , k1        = mkScalar . h $ k_1' preIn
     , k2        = mkScalar . h $ k_2' preIn
-    , qM        = readPointG1 $ qm preIn
-    , qL        = readPointG1 $ ql preIn
-    , qR        = readPointG1 $ qr preIn
-    , qO        = readPointG1 $ qo preIn
-    , qC        = readPointG1 $ qc preIn
-    , sSig1     = readPointG1 $ s1 preIn
-    , sSig2     = readPointG1 $ s2 preIn
-    , sSig3     = readPointG1 $ s3 preIn
-    , x2        = readPointG2 $ x_2' preIn
+    , qM        = f $ qm preIn
+    , qL        = f $ ql preIn
+    , qR        = f $ qr preIn
+    , qO        = f $ qo preIn
+    , qC        = f $ qc preIn
+    , sSig1     = f $ s1 preIn
+    , sSig2     = f $ s2 preIn
+    , sSig3     = f $ s3 preIn
+    , x2        = P.bls12_381_G2_compress . readPointG2 $ x_2' preIn
     , generator = mkScalar . h $ w preIn
     }

@@ -3,15 +3,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-missing-deriving-strategies #-}
 
-module PlutusBenchmark.Verifier.Types 
+module Types 
 ( ProofJSONSnarkjs(..)
 , PreInputsJSONSnarkjs(..)
 )where
 
 import Data.Aeson.TH
-    ( defaultOptions, Options(fieldLabelModifier), deriveFromJSON )
+    ( defaultOptions
+    , Options(fieldLabelModifier)
+    , deriveFromJSON )
 import GHC.Generics ( Generic )
-
 
 data ProofJSONSnarkjs = ProofJSONSnarkjs 
   { a        :: [String]
