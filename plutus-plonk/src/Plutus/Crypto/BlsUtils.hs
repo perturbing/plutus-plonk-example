@@ -43,38 +43,26 @@ module Plutus.Crypto.BlsUtils
 , powModFp2
 , powerOfTwoExponentiationFp2
 , negateFp2
--- Misc
-, reverseByteString -- given that integerToByteString now has a size argument, this is not needed anymore
-, padTo32Bytes      -- given that integerToByteString now has a size argument, this is not needed anymore
 ) where
 
 import qualified Prelude as Haskell
 import PlutusTx.Prelude
-    ( otherwise,
-      Integer,
+    ( Integer,
       ($),
       (&&),
       error,
       modulo,
       Eq(..),
-      AdditiveGroup(..),
-      AdditiveMonoid(..),
-      AdditiveSemigroup(..),
-      Module(..),
-      MultiplicativeMonoid(..),
-      MultiplicativeSemigroup(..),
       Ord((<), (<=)),
-      dropByteString,
       (<>),
       even,
       divide, 
-      foldr,
       Bool (..),
       (.),
       (>),
       (||),
       not )
-import PlutusTx (makeLift, makeIsDataIndexed, unstableMakeIsData)
+import PlutusTx ( makeLift, makeIsDataIndexed, unstableMakeIsData )
 import PlutusTx.Numeric
     ( AdditiveGroup(..)
     , AdditiveMonoid(..)
@@ -83,48 +71,20 @@ import PlutusTx.Numeric
     , MultiplicativeMonoid(..)
     , MultiplicativeSemigroup(..) )
 import PlutusTx.Builtins
-    ( bls12_381_G1_equals
-    , BuiltinBLS12_381_G1_Element
+    ( BuiltinBLS12_381_G1_Element
+    , BuiltinBLS12_381_G2_Element
     , bls12_381_G1_add
     , bls12_381_G1_compressed_zero
     , bls12_381_G1_neg
     , bls12_381_G1_scalarMul 
-    , BuiltinBLS12_381_G2_Element
     , bls12_381_G2_add
     , bls12_381_G2_scalarMul
     , bls12_381_G2_neg
     , bls12_381_G2_compressed_zero
-    , BuiltinByteString
-    , integerToByteString
-    , byteStringToInteger
-    , lengthOfByteString
-    , consByteString
-    , sliceByteString
-    , emptyByteString
-    , indexByteString
     , bls12_381_G1_uncompress
     , bls12_381_G1_compress
     , bls12_381_G2_uncompress
     , bls12_381_G2_compress )
-
--- Helper functions
-
--- Reverse a builtin byte string of arbitrary length
--- This can convert between little and big endian.
-{-# INLINABLE reverseByteString #-}
-reverseByteString :: BuiltinByteString -> BuiltinByteString
-reverseByteString bs =
-    if lengthOfByteString bs == 0 then bs
-    else reverseByteString (sliceByteString 1 (lengthOfByteString bs) bs) <> sliceByteString 0 1 bs
-
--- Pad a byte string to 32 bytes by appending zeros
--- gives an error if the input is larger than 32 bytes
-{-# INLINABLE padTo32Bytes #-}
-padTo32Bytes :: BuiltinByteString -> BuiltinByteString
-padTo32Bytes bs =
-    if lengthOfByteString bs == 32 then bs
-    else if lengthOfByteString bs < 32 then padTo32Bytes (bs <> consByteString 0 emptyByteString)
-    else error ()
 
 -- In this module, we setup the two prime order fields for BLS12-381.
 -- as the type Fp/Fp2 (base points) and Scalar. 

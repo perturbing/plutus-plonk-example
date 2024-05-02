@@ -25,19 +25,20 @@ module Plutus.Crypto.Plonk.Verifier
 , verifyPlonkFastSnarkjs
 ) where
 
-import Plutus.Crypto.Plonk.Inputs (PreInputs (..), Proof (..), PreInputsFast (..), ProofFast (..))
+import Plutus.Crypto.Plonk.Inputs 
+    ( PreInputs (..)
+    , Proof (..)
+    , PreInputsFast (..)
+    , ProofFast (..) )
 import Plutus.Crypto.BlsUtils
     ( mkScalar
     , Scalar (..)
     , MultiplicativeGroup (..)
     , powerOfTwoExponentiationScalar
     , bls12_381_scalar_prime
-    , reverseByteString
-    , padTo32Bytes )
+    , negateScalar )
 import PlutusTx.Prelude
-    ( Integer
-    , Bool (..)
-    , BuiltinByteString
+    ( Bool (..)
     , (>)
     , otherwise
     , enumFromTo
@@ -51,27 +52,20 @@ import PlutusTx.Prelude
     , (<>)
     , ($)
     , modulo
-    , length
-    , sum
-    , dropByteString
-    , BuiltinBLS12_381_G1_Element )
-import PlutusTx.Eq (Eq (..))
-import PlutusTx.List (map, zipWith, foldr, head, and, tail)
+    , sum )
+import PlutusTx.Eq ( Eq (..) )
+import PlutusTx.List ( map, zipWith, head, and, tail )
 import PlutusTx.Numeric
     ( AdditiveGroup(..)
     , AdditiveMonoid(..)
     , AdditiveSemigroup(..)
     , Module(..)
     , MultiplicativeMonoid(..)
-    , MultiplicativeSemigroup(..)
-    , negate )
+    , MultiplicativeSemigroup(..) )
 import PlutusTx.Builtins
-    ( blake2b_256
-    , keccak_256
+    ( keccak_256
     , byteStringToInteger
     , integerToByteString
-    , consByteString
-    , emptyByteString
     , bls12_381_G1_compress
     , bls12_381_G1_uncompress
     , bls12_381_G2_compress
@@ -79,11 +73,10 @@ import PlutusTx.Builtins
     , bls12_381_G1_compressed_generator
     , bls12_381_G2_compressed_generator
     , bls12_381_millerLoop
-    , bls12_381_finalVerify
-    , lengthOfByteString
-    , indexByteString
-    , sliceByteString )
-
+    , bls12_381_finalVerify 
+    , BuiltinByteString  
+    , Integer
+    , BuiltinBLS12_381_G1_Element )
 import GHC.ByteOrder ( ByteOrder(..) )
 
 {-# INLINABLE exponentiate #-}
@@ -97,10 +90,19 @@ exponentiate x n
 
 {-# INLINEABLE verifyPlonkSnarkjs #-}
 verifyPlonkSnarkjs :: PreInputs -> [Integer] -> Proof -> Bool
-verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 sSig3 x2 gen)
+verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qMBs qLBs qRBs qOBs qCBs sSig1Bs sSig2Bs sSig3Bs x2Bs gen)
             pubInputs
             proof@(Proof ca cb cc cz ctl ctm cth cwo cwz ea eb ec es1 es2 ez)
-    | (bls12_381_G1_uncompress -> commA) <- ca
+    | (bls12_381_G1_uncompress -> qM) <- qMBs
+    , (bls12_381_G1_uncompress -> qL) <- qLBs
+    , (bls12_381_G1_uncompress -> qR) <- qRBs
+    , (bls12_381_G1_uncompress -> qO) <- qOBs
+    , (bls12_381_G1_uncompress -> qC) <- qCBs
+    , (bls12_381_G1_uncompress -> sSig1) <- sSig1Bs
+    , (bls12_381_G1_uncompress -> sSig2) <- sSig2Bs
+    , (bls12_381_G1_uncompress -> sSig3) <- sSig3Bs
+    , (bls12_381_G2_uncompress -> x2) <- x2Bs
+    , (bls12_381_G1_uncompress -> commA) <- ca
     , (bls12_381_G1_uncompress -> commB) <- cb
     , (bls12_381_G1_uncompress -> commC) <- cc
     , (bls12_381_G1_uncompress -> commZ) <- cz
@@ -115,19 +117,19 @@ verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 
     , (mkScalar -> evalS1) <- es1
     , (mkScalar -> evalS2) <- es2
     , (mkScalar -> evalZOmega) <- ez
-    , let (w1 : wxs) = map (negate . mkScalar) pubInputs
+    , let (w1 : wxs) = map (negateScalar . mkScalar) pubInputs
     , let bls12_381_G1_generator = bls12_381_G1_uncompress bls12_381_G1_compressed_generator
     , let bls12_381_G2_generator = bls12_381_G2_uncompress bls12_381_G2_compressed_generator
     =
     let n = exponentiate 2 p
-        ~betaBs = keccak_256 $ bls12_381_G1_compress qM
-                            <> bls12_381_G1_compress qL
-                            <> bls12_381_G1_compress qR
-                            <> bls12_381_G1_compress qO
-                            <> bls12_381_G1_compress qC
-                            <> bls12_381_G1_compress sSig1
-                            <> bls12_381_G1_compress sSig2
-                            <> bls12_381_G1_compress sSig3
+        ~betaBs = keccak_256 $ qMBs
+                            <> qLBs
+                            <> qRBs
+                            <> qOBs
+                            <> qCBs
+                            <> sSig1Bs
+                            <> sSig2Bs
+                            <> sSig3Bs
                             <> (integerToByteString BigEndian 32 . head) pubInputs
                             <> ca
                             <> cb
@@ -174,7 +176,7 @@ verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 
         -- this is [F]_1 in the plonk paper
         batchPolyCommitFull = batchPolyCommitG1 + scale v (commA + scale v (commB + scale v (commC + scale v (sSig1 + scale v sSig2))))
         -- this is [E]_1 in the plonk paper
-        groupEncodedBatchEval = scale (negate r0 + v * (evalA + v * (evalB + v * (evalC + v * (evalS1 + v * evalS2)))) + u*evalZOmega ) bls12_381_G1_generator
+        groupEncodedBatchEval = scale (negateScalar r0 + v * (evalA + v * (evalB + v * (evalC + v * (evalS1 + v * evalS2)))) + u*evalZOmega ) bls12_381_G1_generator
     in
         -- the final check that under the pairing.
         bls12_381_finalVerify 
@@ -185,10 +187,19 @@ verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qM qL qR qO qC sSig1 sSig2 
 -- a general vanilla plonk verifier optimized. 
 {-# INLINEABLE verifyPlonkFastSnarkjs #-}
 verifyPlonkFastSnarkjs :: PreInputsFast -> [Integer] -> ProofFast -> Bool
-verifyPlonkFastSnarkjs preInputsFast@(PreInputsFast n p k1 k2 qM qL qR qO qC sSig1 sSig2 sSig3 x2 gens)
+verifyPlonkFastSnarkjs preInputsFast@(PreInputsFast n p k1 k2 qMBs qLBs qRBs qOBs qCBs sSig1Bs sSig2Bs sSig3Bs x2Bs gens)
             pubInputs
             proofFast@(ProofFast ca cb cc cz ctl ctm cth cwo cwz ea eb ec es1 es2 ez lagInv)
-    | (bls12_381_G1_uncompress -> commA) <- ca
+    | (bls12_381_G1_uncompress -> qM) <- qMBs
+    , (bls12_381_G1_uncompress -> qL) <- qLBs
+    , (bls12_381_G1_uncompress -> qR) <- qRBs
+    , (bls12_381_G1_uncompress -> qO) <- qOBs
+    , (bls12_381_G1_uncompress -> qC) <- qCBs
+    , (bls12_381_G1_uncompress -> sSig1) <- sSig1Bs
+    , (bls12_381_G1_uncompress -> sSig2) <- sSig2Bs
+    , (bls12_381_G1_uncompress -> sSig3) <- sSig3Bs
+    , (bls12_381_G2_uncompress -> x2) <- x2Bs 
+    , (bls12_381_G1_uncompress -> commA) <- ca
     , (bls12_381_G1_uncompress -> commB) <- cb
     , (bls12_381_G1_uncompress -> commC) <- cc
     , (bls12_381_G1_uncompress -> commZ) <- cz
@@ -203,7 +214,7 @@ verifyPlonkFastSnarkjs preInputsFast@(PreInputsFast n p k1 k2 qM qL qR qO qC sSi
     , (mkScalar -> evalS1) <- es1
     , (mkScalar -> evalS2) <- es2
     , (mkScalar -> evalZOmega) <- ez
-    , let (w1 : wxs) = map (negate . mkScalar) pubInputs
+    , let (w1 : wxs) = map (negateScalar . mkScalar) pubInputs
     , let lagsInv = map mkScalar lagInv
     , let bls12_381_G1_generator = bls12_381_G1_uncompress bls12_381_G1_compressed_generator
     , let bls12_381_G2_generator = bls12_381_G2_uncompress bls12_381_G2_compressed_generator
@@ -263,7 +274,7 @@ verifyPlonkFastSnarkjs preInputsFast@(PreInputsFast n p k1 k2 qM qL qR qO qC sSi
                             - scale ((evalAPlusGamma +betaEvalS1)*(evalBPlusGamma + betaEvalS2)*alphaEvalZOmega*beta) sSig3
                             - scale powOfTwoZetaPMinOne (commTLow + scale powOfTwoZetaP commTMid + scale (powerOfTwoExponentiationScalar powOfTwoZetaP 1) commTHigh)
           batchPolyCommitFull = batchPolyCommitG1 + scale v (commA + scale v (commB + scale v (commC + scale v (sSig1 + scale v sSig2))))
-          groupEncodedBatchEval = scale (negate r0 + v * (evalA + v * (evalB + v * (evalC + v * (evalS1 + v * evalS2)))) + u*evalZOmega ) bls12_381_G1_generator
+          groupEncodedBatchEval = scale (negateScalar r0 + v * (evalA + v * (evalB + v * (evalC + v * (evalS1 + v * evalS2)))) + u*evalZOmega ) bls12_381_G1_generator
     in
        bls12_381_finalVerify
         (bls12_381_millerLoop (commWOmega + scale u commWOmegaZeta) x2)

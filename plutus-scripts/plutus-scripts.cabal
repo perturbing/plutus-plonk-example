@@ -19,6 +19,7 @@ executable write-scripts
     , plutus-core ^>= 1.23.0.0
     , plutus-ledger-api 
     , plutus-tx-plugin
+    , plutus-plonk
     , cardano-api
     , polynomial-algebra
     , serialise

@@ -9,18 +9,11 @@ import PlutusTx.Prelude
       Integer,
       ($),
       (&&),
-      error,
-      modulo,
       Eq(..),
-      AdditiveGroup(..),
-      AdditiveMonoid(..),
-      AdditiveSemigroup(..),
-      Module(..),
-      MultiplicativeMonoid(..),
-      MultiplicativeSemigroup(..),
       Ord((<), (<=)),
-      dropByteString,
       (<>),
+      (*),
+      (+),
       even,
       divide, 
       foldr,
@@ -29,43 +22,33 @@ import PlutusTx.Prelude
       (>),
       (||),
       not )
-import PlutusTx (makeLift, makeIsDataIndexed, unstableMakeIsData)
+import PlutusTx ( makeLift, makeIsDataIndexed, unstableMakeIsData )
 import PlutusTx.Numeric
     ( AdditiveGroup(..)
     , AdditiveMonoid(..)
     , AdditiveSemigroup(..)
     , Module(..)
     , MultiplicativeMonoid(..)
-    , MultiplicativeSemigroup(..) )
+    , MultiplicativeSemigroup(..)
+    , negate )
 import PlutusTx.Builtins
-    ( bls12_381_G1_equals
-    , BuiltinBLS12_381_G1_Element
-    , bls12_381_G1_add
-    , bls12_381_G1_compressed_zero
-    , bls12_381_G1_neg
-    , bls12_381_G1_scalarMul 
+    ( BuiltinBLS12_381_G1_Element
     , BuiltinBLS12_381_G2_Element
-    , bls12_381_G2_add
-    , bls12_381_G2_scalarMul
-    , bls12_381_G2_neg
-    , bls12_381_G2_compressed_zero
     , BuiltinByteString
+    , bls12_381_G1_compressed_zero
+    , bls12_381_G2_compressed_zero
+    , bls12_381_G1_neg
+    , bls12_381_G2_neg
     , integerToByteString
     , byteStringToInteger
-    , lengthOfByteString
-    , consByteString
-    , sliceByteString
-    , emptyByteString
-    , indexByteString
     , bls12_381_G1_uncompress
     , bls12_381_G1_compress
     , bls12_381_G2_uncompress
     , bls12_381_G2_compress )
 
 import GHC.ByteOrder ( ByteOrder(..) )
-import Plutus.Crypto.BlsUtils ( Fp(..), Fp2(..))
-import PlutusTx.Numeric (negate)
-import Data.Bits (testBit, setBit)
+import Plutus.Crypto.BlsUtils ( Fp(..), Fp2(..) )
+import Data.Bits ( testBit, setBit )
 
 -- Helper functions (this is some legacy code that we need to refactor)
 

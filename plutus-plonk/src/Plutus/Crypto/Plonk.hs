@@ -6,8 +6,8 @@ import Plutus.Crypto.Plonk.Inputs as X
     ( Proof(..)
     , PreInputs(..)
     , ProofFast (..)
-    , PreInputsFast (..)
+    , PreInputsFast (..) 
     , convertToFastProof
-    , convertToFastPreInputs)
+    , convertToFastPreInputs )
 import Plutus.Crypto.Plonk.Verifier as X
     ( verifyPlonkSnarkjs, verifyPlonkFastSnarkjs ) 

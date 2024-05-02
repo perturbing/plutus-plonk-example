@@ -36,17 +36,13 @@ import Plutus.Crypto.BlsUtils
     , recip
     , unScalar
     , mkScalar
-    , reverseByteString
-    , padTo32Bytes
     , bls12_381_scalar_prime )
 import PlutusTx.Builtins
     ( BuiltinByteString,
       Integer,
       BuiltinBLS12_381_G1_Element,
       BuiltinBLS12_381_G2_Element,
-      bls12_381_G1_uncompress,
       byteStringToInteger,
-      blake2b_256,
       integerToByteString,
       keccak_256,
       bls12_381_G1_compress )
@@ -58,10 +54,8 @@ import PlutusTx.Prelude
     , ($)
     , (<>)
     , enumFromTo
-    , takeByteString
     , head
     , modulo )
-
 import GHC.ByteOrder ( ByteOrder(..) )
 
 import qualified Prelude as Haskell
@@ -99,15 +93,15 @@ data PreInputs = PreInputs
     , power           :: Integer                     -- power, 2^power >= number of constraints in the circuit (the upper bound used)
     , k1              :: Scalar                      -- The first field elements that creates a disjoint left coset of H
     , k2              :: Scalar                      -- The second field element that creates a disjoint left coset of H 
-    , qM              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the multiplication gates 
-    , qL              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the left inputs of the circuit
-    , qR              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the right inputs of the circuits
-    , qO              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the outputs of the circuit
-    , qC              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the constants inputs of the circuit
-    , sSig1           :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the first wire permutation 
-    , sSig2           :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the second wire permutation
-    , sSig3           :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the third wire permutation
-    , x2              :: BuiltinBLS12_381_G2_Element -- the first order of the SRS over G2 (g^x where x is the toxic waste / tau in power of tau)
+    , qM              :: BuiltinByteString           -- the commited polynomial of the multiplication gates
+    , qL              :: BuiltinByteString           -- the commited polynomial of the left inputs of the circuit
+    , qR              :: BuiltinByteString           -- the commited polynomial of the right inputs of the circuits
+    , qO              :: BuiltinByteString           -- the commited polynomial of the outputs of the circuit
+    , qC              :: BuiltinByteString           -- the commited polynomial of the constants inputs of the circuit
+    , sSig1           :: BuiltinByteString           -- the commited polynomial of the first wire permutation
+    , sSig2           :: BuiltinByteString           -- the commited polynomial of the second wire permutation
+    , sSig3           :: BuiltinByteString           -- the commited polynomial of the third wire permutation
+    , x2              :: BuiltinByteString           -- the first order of the SRS over G2 (g^x where x is the toxic waste / tau in power of tau)
     , generator       :: Scalar                      -- generator of the subgroup H
     } deriving (Haskell.Show)
 
@@ -122,15 +116,15 @@ data PreInputsFast = PreInputsFast
     , pow'             :: Integer                     -- n = 2^pow
     , k1'              :: Scalar                      -- The first field elements that creates a disjoint left coset of H
     , k2'              :: Scalar                      -- The second field element that creates a disjoint left coset of H 
-    , qM'              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the multiplication gates 
-    , qL'              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the left inputs of the circuit
-    , qR'              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the right inputs of the circuits
-    , qO'              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the outputs of the circuit
-    , qC'              :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the constants inputs of the circuit
-    , sSig1'           :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the first wire permutation 
-    , sSig2'           :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the second wire permutation
-    , sSig3'           :: BuiltinBLS12_381_G1_Element -- the commited polynomial of the third wire permutation
-    , x2'              :: BuiltinBLS12_381_G2_Element -- the first order of the SRS over G2 (g^x where x is the toxic waste / tau in power of tau)
+    , qM'              :: BuiltinByteString           -- the commited polynomial of the multiplication gates
+    , qL'              :: BuiltinByteString           -- the commited polynomial of the left inputs of the circuit
+    , qR'              :: BuiltinByteString           -- the commited polynomial of the right inputs of the circuits
+    , qO'              :: BuiltinByteString           -- the commited polynomial of the outputs of the circuit
+    , qC'              :: BuiltinByteString           -- the commited polynomial of the constants inputs of the circuit
+    , sSig1'           :: BuiltinByteString           -- the commited polynomial of the first wire permutation
+    , sSig2'           :: BuiltinByteString           -- the commited polynomial of the second wire permutation
+    , sSig3'           :: BuiltinByteString           -- the commited polynomial of the third wire permutation
+    , x2'              :: BuiltinByteString           -- the first order of the SRS over G2 (g^x where x is the toxic waste / tau in power of tau)
     , generators       :: [Scalar]                    -- powers of the generator of the subgroup H, [g,g^2,..,g^{number of public inputs}]
     } deriving (Haskell.Show)
 
@@ -200,14 +194,14 @@ convertToFastProof preInputsFast pubInputs proof@(Proof ca cb cc cz ctl ctm cth 
     , sSig1P'      = es1
     , sSig2P'      = es2
     , zOmega'      = ez
-    , lagrangeInverses = let ~betaBs = keccak_256 $ bls12_381_G1_compress (qM' preInputsFast)
-                                        <> bls12_381_G1_compress (qL' preInputsFast)
-                                        <> bls12_381_G1_compress (qR' preInputsFast)
-                                        <> bls12_381_G1_compress (qO' preInputsFast)
-                                        <> bls12_381_G1_compress (qC' preInputsFast)
-                                        <> bls12_381_G1_compress (sSig1' preInputsFast)
-                                        <> bls12_381_G1_compress (sSig2' preInputsFast)
-                                        <> bls12_381_G1_compress (sSig3' preInputsFast)
+    , lagrangeInverses = let ~betaBs = keccak_256 $ qM' preInputsFast
+                                        <> qL' preInputsFast
+                                        <> qR' preInputsFast
+                                        <> qO' preInputsFast
+                                        <> qC' preInputsFast
+                                        <> sSig1' preInputsFast
+                                        <> sSig2' preInputsFast
+                                        <> sSig3' preInputsFast
                                         <> (integerToByteString BigEndian 32 . head) pubInputs
                                         <> ca
                                         <> cb
