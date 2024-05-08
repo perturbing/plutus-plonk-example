@@ -49,6 +49,7 @@ import PlutusTx.Prelude
     , (<)
     , (||)
     , even
+    , mconcat
     , (<>)
     , ($)
     , modulo
@@ -63,7 +64,7 @@ import PlutusTx.Numeric
     , MultiplicativeMonoid(..)
     , MultiplicativeSemigroup(..) )
 import PlutusTx.Builtins
-    ( keccak_256
+    ( blake2b_224
     , byteStringToInteger
     , integerToByteString
     , bls12_381_G1_compress
@@ -122,7 +123,7 @@ verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qMBs qLBs qRBs qOBs qCBs sS
     , let bls12_381_G2_generator = bls12_381_G2_uncompress bls12_381_G2_compressed_generator
     =
     let n = exponentiate 2 p
-        betaBs = keccak_256 $ qMBs
+        betaBs = blake2b_224 $ qMBs
                             <> qLBs
                             <> qRBs
                             <> qOBs
@@ -130,32 +131,32 @@ verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qMBs qLBs qRBs qOBs qCBs sS
                             <> sSig1Bs
                             <> sSig2Bs
                             <> sSig3Bs
-                            <> (integerToByteString BigEndian 32 . head) pubInputs
+                            <> mconcat (map (integerToByteString BigEndian 32) pubInputs)
                             <> ca
                             <> cb
                             <> cc
-        beta = mkScalar $ byteStringToInteger BigEndian betaBs `modulo` bls12_381_scalar_prime
-        gammaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
-        gamma = mkScalar $ byteStringToInteger BigEndian gammaBs `modulo` bls12_381_scalar_prime
-        alphaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
+        beta = Scalar $ byteStringToInteger BigEndian betaBs
+        gammaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) beta
+        gamma = Scalar $ byteStringToInteger BigEndian gammaBs 
+        alphaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) beta
                              <> (integerToByteString BigEndian 32 . unScalar ) gamma
                              <> cz
-        alpha = mkScalar $ byteStringToInteger BigEndian alphaBs `modulo` bls12_381_scalar_prime
-        zetaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) alpha
+        alpha = Scalar $ byteStringToInteger BigEndian alphaBs
+        zetaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) alpha
                              <> ctl
                              <> ctm
                              <> cth
-        zeta = mkScalar $ byteStringToInteger BigEndian zetaBs `modulo` bls12_381_scalar_prime
-        vBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) zeta
+        zeta = Scalar $ byteStringToInteger BigEndian zetaBs 
+        vBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) zeta
                             <> integerToByteString BigEndian 32 ea
                             <> integerToByteString BigEndian 32 eb
                             <> integerToByteString BigEndian 32 ec
                             <> integerToByteString BigEndian 32 es1
                             <> integerToByteString BigEndian 32 es2
                             <> integerToByteString BigEndian 32 ez
-        v = mkScalar $ byteStringToInteger BigEndian vBs `modulo` bls12_381_scalar_prime
-        uBs = keccak_256 $ cwo <> cwz
-        u = mkScalar $ byteStringToInteger BigEndian uBs `modulo` bls12_381_scalar_prime
+        v = Scalar $ byteStringToInteger BigEndian vBs 
+        uBs = blake2b_224 $ cwo <> cwz
+        u = Scalar $ byteStringToInteger BigEndian uBs 
         -- -- this is Z_H(zeta) in the plonk paper
         zeroPoly = scale n zeta - one
         -- this is L_1(zeta) and the higher order L_i
@@ -218,7 +219,7 @@ verifyPlonkFastSnarkjs preInputsFast@(PreInputsFast n p k1 k2 qMBs qLBs qRBs qOB
     , let lagsInv = map mkScalar lagInv
     , let bls12_381_G1_generator = bls12_381_G1_uncompress bls12_381_G1_compressed_generator
     , let bls12_381_G2_generator = bls12_381_G2_uncompress bls12_381_G2_compressed_generator
-    = let betaBs = keccak_256 $ qMBs
+    = let betaBs = blake2b_224 $ qMBs
                             <> qLBs
                             <> qRBs
                             <> qOBs
@@ -226,32 +227,32 @@ verifyPlonkFastSnarkjs preInputsFast@(PreInputsFast n p k1 k2 qMBs qLBs qRBs qOB
                             <> sSig1Bs
                             <> sSig2Bs
                             <> sSig3Bs
-                            <> (integerToByteString BigEndian 32 . head) pubInputs
+                            <> mconcat (map (integerToByteString BigEndian 32) pubInputs)
                             <> ca
                             <> cb
                             <> cc
-          beta = mkScalar $ byteStringToInteger BigEndian betaBs `modulo` bls12_381_scalar_prime
-          gammaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
-          gamma = mkScalar $ byteStringToInteger BigEndian gammaBs `modulo` bls12_381_scalar_prime
-          alphaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
+          beta = Scalar $ byteStringToInteger BigEndian betaBs 
+          gammaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) beta
+          gamma = Scalar $ byteStringToInteger BigEndian gammaBs
+          alphaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) beta
                              <> (integerToByteString BigEndian 32 . unScalar ) gamma
                              <> cz
-          alpha = mkScalar $ byteStringToInteger BigEndian alphaBs `modulo` bls12_381_scalar_prime
-          zetaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) alpha
+          alpha = Scalar $ byteStringToInteger BigEndian alphaBs 
+          zetaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) alpha
                              <> ctl
                              <> ctm
                              <> cth
-          zeta = mkScalar $ byteStringToInteger BigEndian zetaBs `modulo` bls12_381_scalar_prime
-          vBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) zeta
+          zeta = Scalar $ byteStringToInteger BigEndian zetaBs 
+          vBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) zeta
                             <> integerToByteString BigEndian 32 ea
                             <> integerToByteString BigEndian 32 eb
                             <> integerToByteString BigEndian 32 ec
                             <> integerToByteString BigEndian 32 es1
                             <> integerToByteString BigEndian 32 es2
                             <> integerToByteString BigEndian 32 ez
-          v = mkScalar $ byteStringToInteger BigEndian vBs `modulo` bls12_381_scalar_prime
-          uBs = keccak_256 $ cwo <> cwz
-          u = mkScalar $ byteStringToInteger BigEndian uBs `modulo` bls12_381_scalar_prime
+          v = Scalar $ byteStringToInteger BigEndian vBs 
+          uBs = blake2b_224 $ cwo <> cwz
+          u = Scalar $ byteStringToInteger BigEndian uBs 
           powOfTwoZetaP = powerOfTwoExponentiationScalar zeta p
           powOfTwoZetaPMinOne = powOfTwoZetaP - one
           (lagrangePoly1 : lagrangePolyXs) = zipWith (\x y -> x * powOfTwoZetaPMinOne * y) gens lagsInv

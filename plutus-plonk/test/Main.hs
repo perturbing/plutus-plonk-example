@@ -12,11 +12,14 @@ import Plutus.Crypto.Plonk
     , convertToFastProof
     , convertToFastPreInputs
     , verifyPlonkFastSnarkjs )
-import Plutus.Crypto.BlsUtils ( mkScalar, Fp(..), mkFp, Fp2 (..) )
+import Plutus.Crypto.BlsUtils ( mkScalar, Fp(..), mkFp, Fp2 (..), bls12_381_scalar_prime)
 import Offchain (compressG1Point, compressG2Point)
 import PlutusTx.Builtins 
     ( integerToByteString
     , byteStringToInteger
+    , toBuiltin
+    , keccak_256
+    , blake2b_224
     , bls12_381_G1_compressed_zero
     , bls12_381_G1_compressed_generator )
 import GHC.ByteOrder ( ByteOrder(..) )
@@ -24,6 +27,7 @@ import Data.Bits ( testBit, setBit )
 import qualified PlutusTx.Prelude as P
 import Data.Aeson ( decode )
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as BS
 
 main :: IO ()
 main = do 

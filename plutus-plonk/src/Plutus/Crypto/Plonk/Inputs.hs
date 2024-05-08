@@ -44,7 +44,7 @@ import PlutusTx.Builtins
       BuiltinBLS12_381_G2_Element,
       byteStringToInteger,
       integerToByteString,
-      keccak_256,
+      blake2b_224,
       bls12_381_G1_compress )
 import PlutusTx (makeLift, makeIsDataIndexed, unstableMakeIsData)
 import PlutusTx.Numeric (AdditiveGroup (..), scale, (*), (+))
@@ -194,7 +194,7 @@ convertToFastProof preInputsFast pubInputs proof@(Proof ca cb cc cz ctl ctm cth 
     , sSig1P'      = es1
     , sSig2P'      = es2
     , zOmega'      = ez
-    , lagrangeInverses = let ~betaBs = keccak_256 $ qM' preInputsFast
+    , lagrangeInverses = let ~betaBs = blake2b_224 $ qM' preInputsFast
                                         <> qL' preInputsFast
                                         <> qR' preInputsFast
                                         <> qO' preInputsFast
@@ -207,13 +207,13 @@ convertToFastProof preInputsFast pubInputs proof@(Proof ca cb cc cz ctl ctm cth 
                                         <> cb
                                         <> cc
                              beta = mkScalar $ byteStringToInteger BigEndian  betaBs `modulo` bls12_381_scalar_prime
-                             ~gammaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
+                             ~gammaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) beta
                              gamma = mkScalar $ byteStringToInteger BigEndian  gammaBs `modulo` bls12_381_scalar_prime
-                             ~alphaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) beta
+                             ~alphaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) beta
                                         <> (integerToByteString BigEndian 32 . unScalar ) gamma
                                         <> cz
                              alpha = mkScalar $ byteStringToInteger BigEndian alphaBs `modulo` bls12_381_scalar_prime
-                             ~zetaBs = keccak_256 $ (integerToByteString BigEndian 32 . unScalar ) alpha
+                             ~zetaBs = blake2b_224 $ (integerToByteString BigEndian 32 . unScalar ) alpha
                                         <> ctl
                                         <> ctm
                                         <> cth

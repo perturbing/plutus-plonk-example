@@ -3831,16 +3831,17 @@
         "nixpkgs": "nixpkgs_13"
       },
       "locked": {
-        "lastModified": 1699449712,
-        "narHash": "sha256-/0NgO+85Whqb9IRRLuXeFEFn14l/x5td21Vpf5JQ6I8=",
+        "lastModified": 1715151509,
+        "narHash": "sha256-l00NYCbOPNM/Y8xsALU19TefV2p30UuDFaGnHVHjon0=",
         "owner": "perturbing",
         "repo": "snarkjs-cardano",
-        "rev": "dffd29ad2b44d9fd6b3938a150ea920130a2e6da",
+        "rev": "9c40e357378908bdfe657313a0af7152ba325b33",
         "type": "github"
       },
       "original": {
         "owner": "perturbing",
         "repo": "snarkjs-cardano",
+        "rev": "9c40e357378908bdfe657313a0af7152ba325b33",
         "type": "github"
       }
     },
