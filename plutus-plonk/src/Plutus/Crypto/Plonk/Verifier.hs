@@ -49,6 +49,7 @@ import PlutusTx.Prelude
     , (<)
     , (||)
     , even
+    , mconcat
     , (<>)
     , ($)
     , modulo
@@ -130,8 +131,7 @@ verifyPlonkSnarkjs preInputs@(PreInputs nPub p k1 k2 qMBs qLBs qRBs qOBs qCBs sS
                             <> sSig1Bs
                             <> sSig2Bs
                             <> sSig3Bs
-                            -- this should be done for all public inputs
-                            <> (integerToByteString BigEndian 32 . head) pubInputs
+                            <> mconcat (map (integerToByteString BigEndian 32) pubInputs)
                             <> ca
                             <> cb
                             <> cc
@@ -227,7 +227,7 @@ verifyPlonkFastSnarkjs preInputsFast@(PreInputsFast n p k1 k2 qMBs qLBs qRBs qOB
                             <> sSig1Bs
                             <> sSig2Bs
                             <> sSig3Bs
-                            <> (integerToByteString BigEndian 32 . head) pubInputs
+                            <> mconcat (map (integerToByteString BigEndian 32) pubInputs)
                             <> ca
                             <> cb
                             <> cc
