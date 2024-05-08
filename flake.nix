@@ -17,7 +17,7 @@
 
     # the flakes to get circom and snarkjs
     blockchain-utils.url = "github:metacraft-labs/nix-blockchain-development";
-    snarkjs-cardano.url = "github:perturbing/snarkjs-cardano/9c40e357378908bdfe657313a0af7152ba325b33";
+    snarkjs-cardano.url = "github:perturbing/snarkjs-cardano/42eb57674042f9f14c5aee265bb49822119701f6";
 
     # non-flake nix compatibility
     flake-compat.url = "github:edolstra/flake-compat";
