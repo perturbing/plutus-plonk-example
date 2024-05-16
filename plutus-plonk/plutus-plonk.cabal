@@ -16,8 +16,8 @@ library
     hs-source-dirs:   src
     default-language: Haskell2010
     build-depends:    base >= 4.2 && < 5
-                    , plutus-tx
-                    , plutus-core
+                    , plutus-tx  >= 1.27
+                    , plutus-core >= 1.27
 
 test-suite run-vector-test
   type: exitcode-stdio-1.0
@@ -27,7 +27,7 @@ test-suite run-vector-test
   other-modules: Types
   build-depends: base 
                , plutus-tx
-               , plutus-core
+               , plutus-core >= 1.27.0.0
                , plutus-plonk
                , aeson
                , bytestring
