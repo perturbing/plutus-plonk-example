@@ -33,16 +33,21 @@ main :: IO ()
 main = do 
     jsonDataProof <- BL.readFile "test-vectors/example/proof.json"
     jsonDataPreIn <- BL.readFile "test-vectors/setup/verification_key.json"
+    jsonDataPublic <- BL.readFile "test-vectors/example/public-input.json"
     let maybeProof = decode jsonDataProof :: Maybe ProofJSONSnarkjs
     let maybePreIn = decode jsonDataPreIn :: Maybe PreInputsJSONSnarkjs
+    let maybePublic = fmap (map read) (decode jsonDataPublic :: Maybe [String]) :: Maybe [Integer]
     case maybeProof of
         Just proof  -> case maybePreIn of
-            Just preIn -> do let p = convertProofSnarkjs proof
-                             let i = convertPreInputsSnarkjs preIn
-                             print $ verifyPlonkSnarkjs i [20] p
-                             let iFast = convertToFastPreInputs i
-                             let pFast = convertToFastProof iFast [20] p
-                             print $ verifyPlonkFastSnarkjs iFast [20] pFast
+            Just preIn -> case maybePublic of
+                Just public -> do 
+                                let p = convertProofSnarkjs proof
+                                let i = convertPreInputsSnarkjs preIn
+                                print $ verifyPlonkSnarkjs i public p
+                                let iFast = convertToFastPreInputs i
+                                let pFast = convertToFastProof iFast public p
+                                print $ verifyPlonkFastSnarkjs iFast public pFast
+                Nothing -> print "Could not deserialize Public test vector"
             Nothing -> print "Could not deserialize PreInputs test vector"
         Nothing -> print "Could not deserialize Proof test vector"
 

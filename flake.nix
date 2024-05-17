@@ -77,7 +77,7 @@
           # compilation setting, we don't run into issues where we pick tools
           # for the target.
           shell.buildInputs = with nixpkgs.pkgsBuildBuild; [
-            # add deno for front end for now, might switch to nodejs
+            nodejs
             jq
             # add cardano-node and client to shell for running local testnets
             inputs.cardano-node.outputs.packages.${system}.cardano-node
