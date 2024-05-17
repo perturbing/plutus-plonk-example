@@ -2,7 +2,7 @@
 
 **This repository is not audited and should be used only for educational purposes. Use at your own risk.**
 # plutus-plonk-example
-This an e2e example of a plonk ZKP written in Circom, besides that, this repo uses a custom fork of SnarkJS to generate proofs. To run this example, enter a shell via `nix develop`, this will bring all the necessary tools in path. The goal of this example is to show that it is not difficult to develop and set up a script that uses zero knowledge on Cardano.
+This is an e2e example of a plonk ZKP written in Circom, besides that, this repo uses a custom fork of SnarkJS to generate proofs. To run this example, enter a shell via `nix develop`, this will bring all the necessary tools in path. The goal of this example is to show that it is not difficult to develop and set up a script that uses zero knowledge on Cardano.
 
 # To verify the code / compile it yourself
 
@@ -43,7 +43,7 @@ snarkjs zkey export verificationkey test-vectors/setup/example_final.zkey test-v
 Please note that if you did these steps, no file changed (see git status), showing that the verification key that was in the repo, was the correct one.
 
 ### Generate a proof from a witness
-In the `test-vector/example` folder, I create a `private-input.json`. This hold the secret values a=3 and b=11 (you can pick different values) which, together with the wasm files generated in the Circom step above, can be used to create a witness via,
+In the `test-vector/example` folder, I create a `private-input.json`. This holds the secret values a=3 and b=11 (you can pick different values) which, together with the wasm files generated in the Circom step above, can be used to create a witness via,
 ```bash
 node circom/example_js/generate_witness.js circom/example_js/example.wasm test-vectors/example/private-input.json test-vectors/example/witness.wtns
 ```
