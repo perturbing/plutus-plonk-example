@@ -65,7 +65,7 @@ This will write the script to `assets/V3/zkMintingScript.plutus` and the redeeme
 ```bash
 cardano-cli conway transaction build --testnet-magic 4 \
  --tx-in $(cardano-cli query utxo --address $(cat payment.addr) --output-json --testnet-magic 42 | jq -r 'keys[0]') \
- --tx-in-collateral $(cardano-cli query utxo --address $(cat payment.addr) --output-json --testnet-magic 42 | jq -r 'keys[0]') \
+ --tx-in-collateral $(cardano-cli query utxo --address $(cat payment.addr) --output-json --testnet-magic 4 | jq -r 'keys[0]') \
  --mint "1 $(cardano-cli transaction policyid --script-file assets/V3/zkMintingScript.plutus).eeeeee" \
  --tx-out $(cat payment.addr)+10000000+"1 $(cardano-cli transaction policyid --script-file assets/V3/zkMintingScript.plutus).eeeeee" \
  --change-address $(cat payment.addr) \

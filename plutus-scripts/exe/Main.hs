@@ -85,8 +85,10 @@ main :: IO ()
 main = do 
   jsonDataProof <- BL.readFile "test-vectors/example/proof.json"
   jsonDataPreIn <- BL.readFile "test-vectors/setup/verification_key.json"
+  jsonDataPublic <- BL.readFile "test-vectors/example/public-input.json"
   let maybeProof = decode jsonDataProof :: Maybe ProofJSONSnarkjs
   let maybePreIn = decode jsonDataPreIn :: Maybe PreInputsJSONSnarkjs
+  let maybePublic = fmap (map read) (decode jsonDataPublic :: Maybe [String]) :: Maybe [Integer]
   writeCodeToFile PlutusScriptV3 "./assets/V3/alwaysTrueMint.plutus" alwaysTrueMintCode
   case maybePreIn of
     Just preIn -> do let i = convertPreInputsSnarkjs preIn
@@ -94,10 +96,11 @@ main = do
                          zkMintingScriptCodeApplied = zkMintingScriptCode `unsafeApplyCode` liftCodeDef (PlutusV3.toBuiltinData iFast)
                      writeCodeToFile PlutusScriptV3 "./assets/V3/zkMintingScript.plutus" zkMintingScriptCodeApplied
                      case maybeProof of
-                      Just proof -> do let p = convertProofSnarkjs proof
-                                           pFast = convertToFastProof iFast [20] p
-                                           redeemer = (20 :: Integer, pFast)
-                                       writeFile "./assets/redeemers/mintRedeemer.json" (BS8.unpack . prettyPrintJSON $ dataToJSON redeemer)
+                      Just proof -> case maybePublic of
+                        Just public -> do let p = convertProofSnarkjs proof
+                                              pFast = convertToFastProof iFast public p
+                                              redeemer = (head public, pFast)
+                                          writeFile "./assets/redeemers/mintRedeemer.json" (BS8.unpack . prettyPrintJSON $ dataToJSON redeemer)
                       Nothing -> print "Could not deserialize Proof test vector"
     Nothing -> print "Could not deserialize PreInputs test vector"
 
