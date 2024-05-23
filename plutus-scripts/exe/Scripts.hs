@@ -46,9 +46,9 @@ import Shared (wrapFourArgs, wrapThreeArgs, wrapTwoArgs)
 import Plutus.Crypto.Plonk (ProofFast (..), PreInputsFast (..), verifyPlonkFastSnarkjs)
 
 {-# INLINABLE zkMintingScript #-}
-zkMintingScript :: PreInputsFast -> (Integer,ProofFast) -> ScriptContext -> Bool
+zkMintingScript :: PreInputsFast -> ([Integer],ProofFast) -> ScriptContext -> Bool
 zkMintingScript preIn (pubIn,proof) ctx = case scriptContextPurpose ctx of
-    Minting _  -> verifyPlonkFastSnarkjs preIn [pubIn] proof
+    Minting _  -> verifyPlonkFastSnarkjs preIn pubIn proof
     _          -> False
 
 {-# INLINABLE mkWrappedZkMintingScript #-}

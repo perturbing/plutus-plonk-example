@@ -55,6 +55,7 @@ import PlutusTx.Prelude
     , (<>)
     , enumFromTo
     , head
+    , mconcat
     , modulo )
 import GHC.ByteOrder ( ByteOrder(..) )
 
@@ -202,7 +203,7 @@ convertToFastProof preInputsFast pubInputs proof@(Proof ca cb cc cz ctl ctm cth 
                                         <> sSig1' preInputsFast
                                         <> sSig2' preInputsFast
                                         <> sSig3' preInputsFast
-                                        <> (integerToByteString BigEndian 32 . head) pubInputs
+                                        <> mconcat (map (integerToByteString BigEndian 32) pubInputs)
                                         <> ca
                                         <> cb
                                         <> cc

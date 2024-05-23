@@ -99,7 +99,7 @@ main = do
                       Just proof -> case maybePublic of
                         Just public -> do let p = convertProofSnarkjs proof
                                               pFast = convertToFastProof iFast public p
-                                              redeemer = (head public, pFast)
+                                              redeemer = (public, pFast)
                                           writeFile "./assets/redeemers/mintRedeemer.json" (BS8.unpack . prettyPrintJSON $ dataToJSON redeemer)
                       Nothing -> print "Could not deserialize Proof test vector"
     Nothing -> print "Could not deserialize PreInputs test vector"
