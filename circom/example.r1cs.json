@@ -5,7 +5,7 @@
  "nOutputs": 3,
  "nPubInputs": 0,
  "nPrvInputs": 2,
- "nLabels": 9,
+ "nLabels": 6,
  "nConstraints": 3,
  "useCustomGates": false,
  "constraints": [
