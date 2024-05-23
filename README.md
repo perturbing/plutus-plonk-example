@@ -7,7 +7,7 @@ This is an e2e example of a plonk ZKP written in Circom, besides that, this repo
 # To verify the code / compile it yourself
 
 ### Circom
-In the `circom/example.circuit` file you will find the logic of what we prove in zero knowledge. This circuit has two private inputs a and b and one public input c, the idea is that this simple circuit proves that one knows a secret `a` and `b` such that for a public value `c`  we have `c=a*a+b`. To compile this circuit over the BLS12-381 curve to a rank one constraint system (R1CS), you can use
+In the `circom/example.circuit` file you will find the logic of what we prove in zero knowledge. This circuit has two private inputs `a` and `b` and three public input `[c1,c2,c3]`, the idea is that this simple circuit proves that one knows a secret `a` and `b` such that for the public values `c_i`  we have `c_0=a*a+b` and `c_i=c_{i-1}*c_{i_1}+b`. To compile this circuit over the BLS12-381 curve to a rank one constraint system (R1CS), you can use
 ```bash
 cd circom
 circom example.circuit --r1cs --wasm --sym -p bls12381
