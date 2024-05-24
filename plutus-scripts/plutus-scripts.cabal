@@ -16,10 +16,10 @@ executable write-scripts
   hs-source-dirs: exe
   build-depends:
     , base >=4.2 && < 5
-    , plutus-tx
-    , plutus-core ^>= 1.27.0.0
-    , plutus-ledger-api 
-    , plutus-tx-plugin
+    , plutus-tx         ^>= 1.27
+    , plutus-core       ^>= 1.27
+    , plutus-ledger-api ^>= 1.27
+    , plutus-tx-plugin  ^>= 1.27
     , plutus-plonk
     , cardano-api
     , polynomial-algebra

@@ -1,0 +1,85 @@
+cabal-version: 3.0
+name:          plutus-benchmark
+version:       0.1.0.0
+license:       Apache-2.0
+
+common ghc-version-support
+  if (impl(ghc <9.6) || impl(ghc >=9.7))
+    buildable: False
+
+common lang
+  default-language:   Haskell2010
+  default-extensions:
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveLift
+    DeriveTraversable
+    DerivingStrategies
+    DerivingVia
+    ExplicitForAll
+    FlexibleContexts
+    GeneralizedNewtypeDeriving
+    ImportQualifiedPost
+    ScopedTypeVariables
+    StandaloneDeriving
+    Strict
+
+  -- See Note [-fno-full-laziness in Plutus Tx]
+  ghc-options:
+    -fno-specialise -fno-spec-constr -fno-strictness
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
+    -fno-full-laziness
+
+  ghc-options:
+    -Wall -Wnoncanonical-monad-instances -Wincomplete-uni-patterns
+    -Wincomplete-record-updates -Wredundant-constraints -Widentities
+    -Wunused-packages -Wmissing-deriving-strategies
+
+---------------- Common code for benchmarking ----------------
+
+library plutus-benchmark-common
+  import:          lang
+  hs-source-dirs:  common
+  exposed-modules:
+    PlutusBenchmark.Common
+    PlutusBenchmark.NaturalSort
+    PlutusBenchmark.ProtocolParameters
+
+  other-modules:   Paths_plutus_benchmark
+  build-depends:
+    , base               >=4.9   && <5
+    , bytestring
+    , criterion
+    , deepseq
+    , directory
+    , filepath
+    , flat               ^>=0.6
+    , plutus-core        ^>=1.27
+    , plutus-ledger-api  ^>=1.27
+    , plutus-tx          ^>=1.27
+    , tasty
+    , tasty-golden
+    , temporary
+    , text
+
+executable bench-verifier
+  import:           lang
+  default-language: Haskell2010
+  main-is:          Main.hs
+  hs-source-dirs:   verifier
+  build-depends:
+    , base       >=4.9 && <5
+    , bytestring
+    , aeson
+    , plutus-plonk
+    , plutus-benchmark-common
+    , plutus-core       ^>=1.27
+    , plutus-tx         ^>=1.27
+    , plutus-tx-plugin  ^>=1.27 
+    , plutus-plonk 
+  exposed-modules:
+    Scripts
+    RunVerifier
+    Types

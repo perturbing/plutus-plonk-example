@@ -103,3 +103,18 @@ followed by
 deploy-local-testnet
 ```
 again.
+
+## Benchmark
+The isolated evaluation of the plonk verifier can be benchmarked agains the test vectors in the `/test-vectors` folder via
+```bash
+nix run .#plutus-benchmark:exe:bench-verifier
+```
+The current test circuit and public inputs run with
+```bash
+Run fast snarkJS plonk verifier with public inputs [20,411,168932]
+
+    n     Script size             CPU usage               Memory usage
+  ----------------------------------------------------------------------
+    -    5302  (32.4%)      3443379861  (34.4%)          339417   (2.4%) 
+```
+Here the results are relative to the mainnet paramaters (see `/plutus-benchmark/common/PlutusBenchmark/ProtocolParameters.hs`)
