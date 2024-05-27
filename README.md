@@ -78,7 +78,11 @@ If you would like to test this script on a local testnet, you can deploy one via
 ```bash
 deploy-local-testnet
 ```
-In a new shell (a new `nix develop` terminal), wait for it to make blocks (check when `cardano-cli query tip --testnet-magic 42` works). Then you can mint via
+In a new shell (a new `nix develop` terminal), wait for it to make blocks via
+```bash
+cardano-cli query tip --testnet-magic 42
+```
+Then you can mint via
 ```bash
 cp local-testnet/example/utxo-keys/utxo1.skey ./payment.skey
 cp local-testnet/example/utxo-keys/utxo1.vkey ./payment.vkey
