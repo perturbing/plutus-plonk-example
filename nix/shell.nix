@@ -8,8 +8,7 @@ cabalProject:
   packages = lib.traceSeq inputs.CHaP [
     inputs.cardano-node.packages.cardano-node
     inputs.cardano-node.packages.cardano-cli
-    inputs.blockchain-utils.outputs.packages.${system}.circom
-    inputs.snarkjs-cardano.defaultPackage.${system}
+    inputs.nixpkgs-unstable.legacyPackages.${system}.circom
     pkgs.jq
     pkgs.nodejs
   ];

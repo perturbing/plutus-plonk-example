@@ -12,6 +12,8 @@
 
     nixpkgs.follows = "haskell-nix/nixpkgs";
 
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     cardano-node.url = "github:input-output-hk/cardano-node/8.11.0-pre";
 
     hackage = {
@@ -28,8 +30,6 @@
       url = "github:input-output-hk/haskell.nix";
       inputs.hackage.follows = "hackage";
     };
-
-    blockchain-utils.url = "github:metacraft-labs/nix-blockchain-development";
 
     snarkjs-cardano.url = "github:perturbing/snarkjs-cardano/42eb57674042f9f14c5aee265bb49822119701f6";
   };
