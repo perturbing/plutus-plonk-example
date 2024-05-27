@@ -49,16 +49,16 @@ library plutus-benchmark-common
 
   other-modules:   Paths_plutus_benchmark
   build-depends:
-    , base               >=4.9   && <5
+    , base >=4.9 && <5
     , bytestring
     , criterion
     , deepseq
     , directory
     , filepath
-    , flat               ^>=0.6
-    , plutus-core        ^>=1.27
-    , plutus-ledger-api  ^>=1.27
-    , plutus-tx          ^>=1.27
+    , flat ^>=0.6
+    , plutus-core ^>=1.27
+    , plutus-ledger-api ^>=1.27
+    , plutus-tx ^>=1.27
     , tasty
     , tasty-golden
     , temporary
@@ -70,16 +70,16 @@ executable bench-verifier
   main-is:          Main.hs
   hs-source-dirs:   verifier
   build-depends:
-    , base       >=4.9 && <5
-    , bytestring
     , aeson
-    , plutus-plonk
+    , base >=4.9 && <5
+    , bytestring
     , plutus-benchmark-common
-    , plutus-core       ^>=1.27
-    , plutus-tx         ^>=1.27
-    , plutus-tx-plugin  ^>=1.27 
-    , plutus-plonk 
+    , plutus-core ^>=1.27
+    , plutus-plonk
+    , plutus-tx ^>=1.27
+    , plutus-tx-plugin ^>=1.27
+
   exposed-modules:
-    Scripts
     RunVerifier
+    Scripts
     Types

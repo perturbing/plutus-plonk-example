@@ -59,7 +59,7 @@ snarkjs plonk verify test-vectors/setup/verification_key.json test-vectors/examp
 ## Compile the script and create redeemer
 In this repo, you will find a plutus library called `plutus-plonk` that implements the verifier logic needed to verify a proof and public input given a fixed verification key. Besides that, there is a basic minting script implemented in the `plutus-scripts` folder that uses this to verify the circuit we compiled and setup above. To compile this script (which hard-codes `test-vectors/setup/verification_key.json` in the minting script) and convert both the `public-input.json` and `proof.json` to plutus data, you can use
 ```bash
-nix run .#plutus-scripts:exe:write-scripts
+nix run .#write-scripts
 ```
 This will write the script to `assets/V3/zkMintingScript.plutus` and the redeemer (which contains the combination of your public input and proof) to `assets/redeemers/mintRedeemer.json`. These two together should allow you to mint an asset with any name under the policy ID via
 ```bash
@@ -107,7 +107,7 @@ again.
 ## Benchmark
 The isolated evaluation of the plonk verifier can be benchmarked agains the test vectors in the `/test-vectors` folder via
 ```bash
-nix run .#plutus-benchmark:exe:bench-verifier
+nix run .#bench-verifier
 ```
 The current test circuit and public inputs run with
 ```bash

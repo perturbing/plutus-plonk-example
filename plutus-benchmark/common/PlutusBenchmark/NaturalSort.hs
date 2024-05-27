@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+-- {-# LANGUAGE LambdaCase #-}
 
 module PlutusBenchmark.NaturalSort (naturalSort)
 where
@@ -13,28 +13,28 @@ import Data.List (sortBy)
    It does this by splitting strings into sequences of numeric and non-numeric
    substrings and then comparing those sequences.
 -}
-
-data Component =
-    Numeric Int
-  | Other String
+data Component
+    = Numeric Int
+    | Other String
     deriving stock (Eq, Ord, Show)
-    -- Numeric < Other
+
+-- Numeric < Other
 
 getComponent :: String -> Maybe (Component, String)
 getComponent "" = Nothing
-getComponent s@(c:_)
+getComponent s@(c : _)
     | isDigit c =
         case span isDigit s of
-          (p,q) -> Just (Numeric (read p), q)
+            (p, q) -> Just (Numeric (read p), q)
     | otherwise =
-        case span (not . isDigit) s of
-          (p,q) -> Just (Other p, q)
+        case break isDigit s of
+            (p, q) -> Just (Other p, q)
 
 toComponents :: String -> [Component]
 toComponents s =
     case getComponent s of
-      Nothing    -> []
-      Just (p,q) -> p : (toComponents q)
+        Nothing -> []
+        Just (p, q) -> p : toComponents q
 
 {- Compare two strings according to their components.  A difficulty arises
    because, for example, "file1" and "file01" have the same components but aren't
@@ -50,10 +50,9 @@ naturalCompare :: String -> String -> Ordering
 naturalCompare s1 s2 =
     let c1 = toComponents s1
         c2 = toComponents s2
-    in if c1==c2
-       then compare s1 s2
-       else compare c1 c2
+     in if c1 == c2
+            then compare s1 s2
+            else compare c1 c2
 
 naturalSort :: [String] -> [String]
 naturalSort = sortBy naturalCompare
-

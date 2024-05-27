@@ -1,33 +1,39 @@
 cabal-version: 3.0
-name: plutus-plonk
-version: 1.0.0.0
-license: Apache-2.0
-author: Thomas Vellekoop
-maintainer: thomas.vellekoop@iohk.io
-synopsis: "A plutus plonk verifier for snarkjs and circom circuits"
-build-type: Simple
+name:          plutus-plonk
+version:       1.0.0.0
+license:       Apache-2.0
+author:        Thomas Vellekoop
+maintainer:    thomas.vellekoop@iohk.io
+synopsis:      "A plutus plonk verifier for snarkjs and circom circuits"
+build-type:    Simple
 
 library
-    exposed-modules:  Plutus.Crypto.BlsUtils
-                      Plutus.Crypto.Plonk
-                      Offchain
-    other-modules:    Plutus.Crypto.Plonk.Inputs
-                      Plutus.Crypto.Plonk.Verifier
-    hs-source-dirs:   src
-    default-language: Haskell2010
-    build-depends:    base >= 4.2 && < 5
-                    , plutus-tx   ^>= 1.27
-                    , plutus-core ^>= 1.27
+  exposed-modules:
+    Offchain
+    Plutus.Crypto.BlsUtils
+    Plutus.Crypto.Plonk
+
+  other-modules:
+    Plutus.Crypto.Plonk.Inputs
+    Plutus.Crypto.Plonk.Verifier
+
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  build-depends:
+    , base >=4.2 && <5
+    , plutus-core ^>=1.27
+    , plutus-tx ^>=1.27
 
 test-suite run-vector-test
-  type: exitcode-stdio-1.0
-  hs-source-dirs: test
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
   default-language: Haskell2010
-  main-is: Main.hs
-  other-modules: Types
-  build-depends: base 
-               , plutus-tx    ^>= 1.27
-               , plutus-core  ^>= 1.27
-               , plutus-plonk
-               , aeson
-               , bytestring
+  main-is:          Main.hs
+  other-modules:    Types
+  build-depends:
+    , aeson
+    , base
+    , bytestring
+    , plutus-core ^>=1.27
+    , plutus-plonk
+    , plutus-tx ^>=1.27

@@ -1,0 +1,4 @@
+- fixity: infixr 8 .*
+- fixity: infixr 3 ***
+- fixity: infixr 3 &&&
+- fixity: infixr 1 <=<
