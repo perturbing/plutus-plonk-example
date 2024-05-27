@@ -24,24 +24,19 @@ cabalProject:
     hlint.enable = true;
   };
 
-  # tools = {
-  #   haskell-language-server =
-  #     let
-  #       hlsProject = pkgs.haskell-nix.cabalProject' {
-  #         name = "haskell-language-server";
-  #         src = inputs.iogx.inputs.haskell-nix.inputs."hls-2.6";
-  #         configureArgs = "--disable-benchmarks --disable-tests";
-  #         compiler-nix-name = lib.mkDefault "ghc96";
-  #         modules = [{
-  #           packages.ghcide.patches = [
-  #             # https://github.com/haskell/haskell-language-server/issues/4046#issuecomment-1926242056
-  #             ./ghcide-workaround.diff
-  #           ];
-  #         }];
-  #       };
-  #     in
-  #     hlsProject.hsPkgs.haskell-language-server.components.exes.haskell-language-server;
-  # };
+  tools = {
+    haskell-language-server =
+      let
+        hlsProject = pkgs.haskell-nix.cabalProject' {
+          name = "haskell-language-server";
+          src = inputs.iogx.inputs.haskell-nix.inputs."hls-2.6";
+          configureArgs = "--disable-benchmarks --disable-tests";
+          compiler-nix-name = lib.mkDefault "ghc96";
+          modules = [ ];
+        };
+      in
+      hlsProject.hsPkgs.haskell-language-server.components.exes.haskell-language-server;
+  };
 
   scripts = {
     deploy-local-testnet = {
