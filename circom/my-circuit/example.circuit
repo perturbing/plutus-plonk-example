@@ -1,0 +1,16 @@
+pragma circom 2.1.9;
+
+include "../circomlib/circuits/poseidon.circom";
+
+template ProveKnowledgeOfPreImage(){
+    signal input in[2];
+    signal output out;
+
+    component poseidon = Poseidon(2);
+
+    poseidon.inputs[0] <== in[0];
+    poseidon.inputs[1] <== in[1];
+    out <== poseidon.out;
+}
+
+component main = ProveKnowledgeOfPreImage();

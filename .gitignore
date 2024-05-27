@@ -24,7 +24,6 @@ cabal.project.local~
 local-testnet/example
 local-testnet/logs
 .pre-commit-config.yaml
-circomlib
 
 # nix
 result*
