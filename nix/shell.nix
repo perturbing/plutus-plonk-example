@@ -9,6 +9,7 @@ cabalProject:
     inputs.cardano-node.packages.cardano-node
     inputs.cardano-node.packages.cardano-cli
     inputs.nixpkgs-unstable.legacyPackages.${system}.circom
+    inputs.snarkjs-cardano.defaultPackage.${system}
     pkgs.jq
     pkgs.nodejs
   ];
