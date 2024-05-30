@@ -115,8 +115,8 @@ The current test circuit and public inputs run with
 ```bash
 Run fast snarkJS plonk verifier with public inputs [.......]
 
-    n     Script size             CPU usage               Memory usage
+   n     Script size             CPU usage               Memory usage
   ----------------------------------------------------------------------
-    -    5302  (32.4%)      3443379861  (34.4%)          339417   (2.4%) 
+    -    6274  (38.3%)      3585086348  (35.9%)          668618   (4.8%) 
 ```
 Here the results are relative to the mainnet paramaters (see `/plutus-benchmark/common/PlutusBenchmark/ProtocolParameters.hs`)

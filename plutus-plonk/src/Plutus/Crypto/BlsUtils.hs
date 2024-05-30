@@ -188,7 +188,7 @@ extendedEuclidean a b =
 multiplicativeInverse :: Integer -> Integer -> Integer
 multiplicativeInverse m a =
     let (gcd, x, _) = extendedEuclidean a m
-     in if gcd == 1 then ((x `modulo` m) + m) `modulo` m else error ()
+     in if gcd == 1 then x `modulo` m else error ()
 
 -- In math this is b^a mod p, where b is of type scalar and a any integer
 instance Module Integer Scalar where
