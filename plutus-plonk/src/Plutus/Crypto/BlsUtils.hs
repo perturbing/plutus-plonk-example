@@ -42,6 +42,15 @@ module Plutus.Crypto.BlsUtils (
     powModFp2,
     powerOfTwoExponentiationFp2,
     negateFp2,
+    -- Scalar polynomial type and functions
+    ScalarPoly (..),
+    mkScalarPoly,
+    polyMulBinom,
+    getFinalPoly,
+    removeTrailingZeros,
+    degree,
+    quotRemScalarPoly,
+    extendedEuclideanPoly,
 ) where
 
 import PlutusTx (makeIsDataIndexed, makeLift, unstableMakeIsData)
@@ -61,6 +70,17 @@ import PlutusTx.Builtins (
     bls12_381_G2_scalarMul,
     bls12_381_G2_uncompress,
  )
+import PlutusTx.List (
+    dropWhile,
+    foldl,
+    head,
+    last,
+    map,
+    replicate,
+    reverse,
+    zip,
+    zipWith,
+ )
 import PlutusTx.Numeric (
     AdditiveGroup (..),
     AdditiveMonoid (..),
@@ -75,15 +95,19 @@ import PlutusTx.Prelude (
     Integer,
     Ord ((<), (<=)),
     divide,
+    enumFromTo,
     error,
     even,
+    length,
     modulo,
     not,
+    otherwise,
     ($),
     (&&),
     (.),
     (<>),
     (>),
+    (>=),
     (||),
  )
 import qualified Prelude as Haskell
@@ -456,3 +480,114 @@ instance Ord Fp2 where
 
 -- {-# INLINABLE (>=) #-}
 -- Fp2 a b >= Fp2 c d =
+
+-- A type synonym for a polynomial over the scalar field.
+-- The coefficients are ordered from the lowest to the highest degree.
+newtype ScalarPoly = ScalarPoly {unScalarPoly :: [Scalar]} deriving (Haskell.Show)
+makeLift ''ScalarPoly
+makeIsDataIndexed ''ScalarPoly [('ScalarPoly, 0)]
+
+-- Interface to create a ScalarPoly and exclude for safety empty lists
+{-# INLINEABLE mkScalarPoly #-}
+mkScalarPoly :: [Scalar] -> ScalarPoly
+mkScalarPoly coeffs = if coeffs == [] then error () else ScalarPoly coeffs
+
+-- Function to remove trailing zeros from a ScalarPoly
+-- Note that since this polynomial works over a field, any operation
+-- can result in a highest degree coefficient of 0.
+-- This function is useful to remove these trailing zeros after all operations.
+{-# INLINEABLE removeTrailingZeros #-}
+removeTrailingZeros :: ScalarPoly -> ScalarPoly
+removeTrailingZeros (ScalarPoly coeffs) = ScalarPoly (reverse (dropWhile (== zero) (reverse coeffs)))
+
+-- Function to get the degree of a ScalarPoly
+{-# INLINEABLE degree #-}
+degree :: ScalarPoly -> Integer
+degree (ScalarPoly coeffs) = length coeffs - 1
+
+instance Eq ScalarPoly where
+    {-# INLINEABLE (==) #-}
+    ScalarPoly a == ScalarPoly b = a == b
+
+instance AdditiveSemigroup ScalarPoly where
+    {-# INLINEABLE (+) #-}
+    (ScalarPoly a) + (ScalarPoly b) =
+        let lengthA = length a
+            lengthB = length b
+         in if lengthA >= lengthB
+                then removeTrailingZeros . ScalarPoly $ zipWith (+) a (b <> replicate (lengthA - lengthB) zero)
+                else removeTrailingZeros . ScalarPoly $ zipWith (+) (a <> replicate (lengthB - lengthA) zero) b
+
+instance AdditiveMonoid ScalarPoly where
+    {-# INLINEABLE zero #-}
+    zero = ScalarPoly [zero]
+
+-- Note that + already performs removal of trailing zeros.
+instance AdditiveGroup ScalarPoly where
+    {-# INLINEABLE (-) #-}
+    (-) a (ScalarPoly b) = a + ScalarPoly (map negateScalar b)
+
+instance MultiplicativeSemigroup ScalarPoly where
+    {-# INLINEABLE (*) #-}
+    (*) a@(ScalarPoly ax) b@(ScalarPoly bx) =
+        let la = length ax
+            lb = length bx
+         in if la <= lb
+                then foldl (+) zero (map f (zip (enumFromTo 0 la) ax))
+                else b * a
+      where
+        f :: (Integer, Scalar) -> ScalarPoly
+        f (i, coef) = ScalarPoly (replicate i zero <> map (coef *) bx)
+
+instance MultiplicativeMonoid ScalarPoly where
+    {-# INLINEABLE one #-}
+    one = ScalarPoly [one]
+
+-- Testing only, do not use onchain, its inefficient. In a real application use
+-- something like: https://flintlib.org/doc/fmpq_poly.html?highlight=gcd#c.fmpq_poly_xgcd
+-- same for large polynomials, use a library like flint.
+quotRemScalarPoly :: ScalarPoly -> ScalarPoly -> (ScalarPoly, ScalarPoly)
+quotRemScalarPoly dividend@(ScalarPoly ds) divisor@(ScalarPoly dsr)
+    | dividend == zero = (zero, zero)
+    | divisor == zero = error ()
+    | degree dividend < degree divisor = (zero, dividend)
+    | otherwise = divide dividend divisor zero
+  where
+    divide :: ScalarPoly -> ScalarPoly -> ScalarPoly -> (ScalarPoly, ScalarPoly)
+    divide r@(ScalarPoly rs) d@(ScalarPoly dsr) q
+        | degree r < degree d = (q, if r == ScalarPoly [] then zero else r)
+        | otherwise =
+            let leadR = last rs
+                leadD = last dsr
+                degR = degree r
+                degD = degree d
+                coeff = leadR `div` leadD
+                degDiff = degR - degD
+                scaledDivisor = ScalarPoly (replicate degDiff zero <> map (* coeff) dsr)
+                newR = removeTrailingZeros (r - scaledDivisor)
+                newQ = removeTrailingZeros (q + ScalarPoly (replicate degDiff zero <> [coeff]))
+             in divide newR d newQ
+
+extendedEuclideanPoly :: ScalarPoly -> ScalarPoly -> (ScalarPoly, ScalarPoly, ScalarPoly)
+extendedEuclideanPoly a b =
+    if b == zero
+        then (a, one, zero)
+        else
+            let (q, r) = quotRemScalarPoly a b
+                (gcd, x1, y1) = extendedEuclideanPoly b r
+                x = y1
+                y = x1 - q * y1
+             in (gcd, x, y)
+
+-- Multiply a polynomial f with the binomial (x+a) (lowest coefficients are first in the list)
+{-# INLINEABLE polyMulBinom #-}
+polyMulBinom :: ScalarPoly -> Scalar -> ScalarPoly
+polyMulBinom (ScalarPoly f) a = ScalarPoly $ zipWith (+) (zero : f) (map (* a) f <> [zero])
+
+-- Multiply a list of n coefficients that belong to a binomial each to get a final polynomial of degree n+1
+-- Example: for (x+2)(x+3)(x+5)(x+7)(x+11)=x^5 + 28 x^4 + 288 x^3 + 1358 x^2 + 2927 x + 2310
+--  > getFinalPoly $ map mkScalar [2,3,5,7,11]
+--  > [Scalar {unScalar = 2310},Scalar {unScalar = 2927},Scalar {unScalar = 1358},Scalar {unScalar = 288},Scalar {unScalar = 28},Scalar {unScalar = 1}]
+{-# INLINEABLE getFinalPoly #-}
+getFinalPoly :: [Scalar] -> ScalarPoly
+getFinalPoly = foldl polyMulBinom (ScalarPoly [one])
