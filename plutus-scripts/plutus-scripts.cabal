@@ -21,10 +21,10 @@ executable write-scripts
     , base >=4.2 && <5
     , bytestring
     , cardano-api
-    , plutus-core ^>=1.27
-    , plutus-ledger-api ^>=1.27
+    , plutus-core ^>=1.30
+    , plutus-ledger-api
     , plutus-plonk
-    , plutus-tx ^>=1.27
-    , plutus-tx-plugin ^>=1.27
+    , plutus-tx ^>=1.30
+    , plutus-tx-plugin ^>=1.30
     , polynomial-algebra
     , serialise
