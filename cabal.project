@@ -14,3 +14,56 @@ index-state:
 
 packages: plutus-plonk
           plutus-benchmark
+          plutus-scripts
+
+source-repository-package
+  type: git
+  location: https://github.com/IntersectMBO/ouroboros-consensus
+  tag: ead2494e080664b39360225fac8f4e6d921ebd93
+  --sha256: sha256-+M3kmlkaB0ssQoNQG2iLxcuYSTv8AzTxtvZdOpaViss=
+  subdir:
+    ouroboros-consensus
+    ouroboros-consensus-cardano
+    ouroboros-consensus-diffusion
+    ouroboros-consensus-protocol
+
+source-repository-package
+  type: git
+  location: https://github.com/IntersectMBO/cardano-ledger
+  tag: 0a11c2ac64b3e2ca04d5e84b06c9a4e089bf37d7
+  --sha256: sha256-UubLu2Tx+4bndGlgS8EPkLZGUhMGRsIefQSXMuXBkMk=
+  subdir:
+    eras/alonzo/impl
+    eras/alonzo/test-suite
+    eras/allegra/impl
+    eras/babbage/impl
+    eras/babbage/test-suite
+    eras/byron/chain/executable-spec
+    eras/byron/crypto
+    eras/byron/crypto/test
+    eras/byron/ledger/executable-spec
+    eras/byron/ledger/impl
+    eras/byron/ledger/impl/test
+    eras/conway/impl
+    eras/conway/test-suite
+    eras/mary/impl
+    eras/shelley-ma/test-suite
+    eras/shelley/impl
+    eras/shelley/test-suite
+    libs/cardano-data
+    libs/cardano-ledger-api
+    libs/cardano-ledger-binary
+    libs/cardano-ledger-core
+    libs/cardano-protocol-tpraos
+    libs/non-integral
+    libs/set-algebra
+    libs/small-steps
+    libs/vector-map
+
+source-repository-package
+  type: git
+  location: https://github.com/intersectmbo/cardano-api
+  tag: 2ba99686343afe7c1d2fd036a7f5273ce6e86971
+  --sha256: sha256-QO6oDu6j/IXi077ZRQZOQWbx4/pHlgJxzxbUlBEtxRw=
+  subdir:
+    cardano-api

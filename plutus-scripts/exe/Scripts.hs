@@ -21,9 +21,11 @@ module Scripts where
 
 import Plutus.Crypto.Plonk (PreInputsFast (..), ProofFast (..), verifyPlonkFastSnarkjs)
 import PlutusLedgerApi.V3 (
+    Redeemer (..),
     ScriptContext (..),
+    ScriptInfo (..),
     ScriptPurpose (..),
-    scriptContextPurpose,
+    fromBuiltinData,
  )
 import PlutusTx (
     CompiledCode,
@@ -42,34 +44,40 @@ import PlutusTx.Builtins (
     error,
  )
 import PlutusTx.Prelude (
+    BuiltinUnit,
+    Maybe (..),
     ($),
     (.),
     (==),
  )
-import Shared (wrapFourArgs, wrapThreeArgs, wrapTwoArgs)
+import Shared (wrapFourArgs, wrapOneArg, wrapThreeArgs, wrapTwoArgs)
 
 {-# INLINEABLE zkMintingScript #-}
-zkMintingScript :: PreInputsFast -> ([Integer], ProofFast) -> ScriptContext -> Bool
-zkMintingScript preIn (pubIn, proof) ctx = case scriptContextPurpose ctx of
-    Minting _ -> verifyPlonkFastSnarkjs preIn pubIn proof
+zkMintingScript :: PreInputsFast -> ScriptContext -> Bool
+zkMintingScript preIn ctx = case scriptContextScriptInfo ctx of
+    MintingScript _ -> case redeemer of
+        Just (pubIn, proof) -> verifyPlonkFastSnarkjs preIn pubIn proof
+        Nothing -> False
+      where
+        redeemer = fromBuiltinData . getRedeemer $ scriptContextRedeemer ctx :: Maybe ([Integer], ProofFast)
     _ -> False
 
 {-# INLINEABLE mkWrappedZkMintingScript #-}
-mkWrappedZkMintingScript :: BuiltinData -> BuiltinData -> BuiltinData -> ()
-mkWrappedZkMintingScript = wrapThreeArgs zkMintingScript
+mkWrappedZkMintingScript :: BuiltinData -> BuiltinData -> BuiltinUnit
+mkWrappedZkMintingScript = wrapTwoArgs zkMintingScript
 
-zkMintingScriptCode :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> ())
+zkMintingScriptCode :: CompiledCode (BuiltinData -> BuiltinData -> BuiltinUnit)
 zkMintingScriptCode = $$(compile [||mkWrappedZkMintingScript||])
 
 -- testing purposes
 
 {-# INLINEABLE alwaysTrueMint #-}
-alwaysTrueMint :: BuiltinData -> ScriptContext -> Bool
-alwaysTrueMint _ _ = True
+alwaysTrueMint :: ScriptContext -> Bool
+alwaysTrueMint _ = True
 
 {-# INLINEABLE wrappedAlwaysTrueMint #-}
-wrappedAlwaysTrueMint :: BuiltinData -> BuiltinData -> ()
-wrappedAlwaysTrueMint = wrapTwoArgs alwaysTrueMint
+wrappedAlwaysTrueMint :: BuiltinData -> BuiltinUnit
+wrappedAlwaysTrueMint = wrapOneArg alwaysTrueMint
 
-alwaysTrueMintCode :: CompiledCode (BuiltinData -> BuiltinData -> ())
+alwaysTrueMintCode :: CompiledCode (BuiltinData -> BuiltinUnit)
 alwaysTrueMintCode = $$(compile [||wrappedAlwaysTrueMint||])

@@ -18,16 +18,27 @@ import PlutusTx.Builtins (
  )
 import PlutusTx.Prelude (
     Bool (..),
+    BuiltinUnit,
     check,
     ($),
  )
 
 -- Helper function to wrap a script to error on the return of a False.
+{-# INLINEABLE wrapOneArg #-}
+wrapOneArg ::
+    (UnsafeFromData a) =>
+    (a -> Bool) ->
+    (BuiltinData -> BuiltinUnit)
+wrapOneArg f ctx =
+    check
+        $ f
+            (unsafeFromBuiltinData ctx)
+
 {-# INLINEABLE wrapTwoArgs #-}
 wrapTwoArgs ::
     (UnsafeFromData a) =>
     (a -> ScriptContext -> Bool) ->
-    (BuiltinData -> BuiltinData -> ())
+    (BuiltinData -> BuiltinData -> BuiltinUnit)
 wrapTwoArgs f a ctx =
     check
         $ f
@@ -40,7 +51,7 @@ wrapThreeArgs ::
     , UnsafeFromData b
     ) =>
     (a -> b -> ScriptContext -> Bool) ->
-    (BuiltinData -> BuiltinData -> BuiltinData -> ())
+    (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
 wrapThreeArgs f a b ctx =
     check
         $ f
@@ -55,7 +66,7 @@ wrapFourArgs ::
     , UnsafeFromData c
     ) =>
     (a -> b -> c -> ScriptContext -> Bool) ->
-    (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ())
+    (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> BuiltinUnit)
 wrapFourArgs f a b c ctx =
     check
         $ f
