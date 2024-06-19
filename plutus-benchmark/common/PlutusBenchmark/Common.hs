@@ -121,9 +121,9 @@ haskellValueToTerm = compiledCodeToTerm . Tx.liftCodeDef
 -- | Just run a term to obtain an `EvaluationResult` (used for tests etc.)
 unsafeRunTermCek :: Term -> EvaluationResult Term
 unsafeRunTermCek =
-    unsafeExtractEvaluationResult
+    unsafeToEvaluationResult
         . (\(res, _, _) -> res)
-        . runCekDeBruijn PLC.defaultCekParameters Cek.restrictingEnormous Cek.noEmitter
+        . runCekDeBruijn PLC.defaultCekParametersForTesting Cek.restrictingEnormous Cek.noEmitter
 
 -- | Just run a term.
 runTermCek ::
@@ -133,12 +133,12 @@ runTermCek ::
     )
 runTermCek =
     (\(res, _, logs) -> (res, logs))
-        . runCekDeBruijn PLC.defaultCekParameters Cek.restrictingEnormous Cek.logEmitter
+        . runCekDeBruijn PLC.defaultCekParametersForTesting Cek.restrictingEnormous Cek.logEmitter
 
 -- | Evaluate a script and return the CPU and memory costs (according to the cost model)
 getCostsCek :: UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun () -> (Integer, Integer)
 getCostsCek (UPLC.Program _ _ prog) =
-    case Cek.runCekDeBruijn PLC.defaultCekParameters Cek.tallying Cek.noEmitter prog of
+    case Cek.runCekDeBruijn PLC.defaultCekParametersForTesting Cek.tallying Cek.noEmitter prog of
         (_res, Cek.TallyingSt _ budget, _logs) ->
             let ExBudget (ExCPU cpu) (ExMemory mem) = budget
              in (fromSatInt cpu, fromSatInt mem)
@@ -165,14 +165,14 @@ deliberately not including it in the benchmarks.
 -}
 mkEvalCtx :: LedgerApi.EvaluationContext
 mkEvalCtx =
-    case PLC.defaultCostModelParams of
+    case PLC.defaultCostModelParamsForTesting of
         Just p ->
             let errOrCtx =
-                    -- The validation benchmarks were all created from PlutusV1 scripts
+                    -- The validation benchmarks were all created from PlutusV3 scripts
                     LedgerApi.mkDynEvaluationContext
-                        LedgerApi.PlutusV1
-                        [DefaultFunSemanticsVariant1]
-                        (const DefaultFunSemanticsVariant1)
+                        LedgerApi.PlutusV3
+                        [DefaultFunSemanticsVariantC]
+                        (const DefaultFunSemanticsVariantC)
                         p
              in case errOrCtx of
                     Right ec -> ec
@@ -189,8 +189,8 @@ evaluateCekLikeInProd ::
 evaluateCekLikeInProd evalCtx term = do
     let (getRes, _, _) =
             let
-                -- The validation benchmarks were all created from PlutusV1 scripts
-                pv = LedgerApi.ledgerLanguageIntroducedIn LedgerApi.PlutusV1
+                -- The validation benchmarks were all created from PlutusV3 scripts
+                pv = LedgerApi.ledgerLanguageIntroducedIn LedgerApi.PlutusV3
              in
                 LedgerApi.evaluateTerm UPLC.restrictingEnormous pv LedgerApi.Quiet evalCtx term
     getRes
