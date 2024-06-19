@@ -7,9 +7,9 @@ This is an e2e example of a plonk ZKP written in Circom, besides that, this repo
 # To verify the code / compile it yourself
 
 ### Circom
-In the `circom/example.circuit` file you will find the logic of what we prove in zero knowledge. This circuit has two private inputs `in[2]` and one public output `out`, the idea is that this simple circuit proves that one knows a preimage of size two to the poseidon hash digest `out`. To compile this circuit over the BLS12-381 curve to a rank one constraint system (R1CS), you can use
+In the `circom/example.circom` file you will find the logic of what we prove in zero knowledge. This circuit has two private inputs `in[2]` and one public output `out`, the idea is that this simple circuit proves that one knows a preimage of size two to the poseidon hash digest `out`. To compile this circuit over the BLS12-381 curve to a rank one constraint system (R1CS), you can use
 ```bash
-circom circom/my-circuit/example.circuit --r1cs --wasm --sym -p bls12381 -o circom/my-circuit
+circom circom/my-circuit/example.circom --r1cs --wasm --sym -p bls12381 -o circom/my-circuit
 ```
 This will create the files and folder
 ```bash
