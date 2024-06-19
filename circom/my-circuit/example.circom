@@ -1,19 +1,22 @@
 pragma circom 2.1.9;
 
-include "../circomlib/circuits/poseidon.circom";
+template Multiplier(n) {
+    // signals are always private unless declared otherwise
+    signal input a;
+    signal input b;
+    signal output c;
 
-template ProveKnowledgeOfPreImage(n){
-    signal input in[2];
-    signal output out[n];
+    // the circom language also has lists
+    signal int[n];
 
-    component poseidon = Poseidon(2);
-
-    poseidon.inputs[0] <== in[0];
-    poseidon.inputs[1] <== in[1];
-
-    for (var i = 0; i < n; i++) {
-        out[i] <== poseidon.out;
+    int[0] <== a*a + b;
+    // the circom language also has loops
+    for (var i=1; i<n; i++) {
+    int[i] <== int[i-1]*int[i-1] + b;
     }
+
+    c <== int[n-1];
 }
 
-component main = ProveKnowledgeOfPreImage(10);
+// this marks that the signal b is public and all outputs are public
+component main {public [b]} = Multiplier(100);
