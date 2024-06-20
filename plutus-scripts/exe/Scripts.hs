@@ -72,7 +72,7 @@ zkMintingScriptCode = $$(compile [||mkWrappedZkMintingScript||])
 -- testing purposes
 
 {-# INLINEABLE alwaysTrueMint #-}
-alwaysTrueMint :: ScriptContext -> Bool
+alwaysTrueMint :: BuiltinData -> Bool
 alwaysTrueMint _ = True
 
 {-# INLINEABLE wrappedAlwaysTrueMint #-}
