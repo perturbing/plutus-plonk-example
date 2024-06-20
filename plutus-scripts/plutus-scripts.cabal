@@ -20,7 +20,7 @@ executable write-scripts
     , aeson
     , base >=4.2 && <5
     , bytestring
-    , cardano-api
+    , cardano-api ^>=8.48.0.0
     , plutus-core ^>=1.30
     , plutus-ledger-api ^>=1.30
     , plutus-plonk
