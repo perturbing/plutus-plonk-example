@@ -43,6 +43,7 @@ import PlutusTx.Builtins (
     Integer,
     error,
  )
+import PlutusTx.Builtins.Internal as BI
 import PlutusTx.Prelude (
     BuiltinUnit,
     Maybe (..),
@@ -77,7 +78,7 @@ alwaysTrueMint _ = True
 
 {-# INLINEABLE wrappedAlwaysTrueMint #-}
 wrappedAlwaysTrueMint :: BuiltinData -> BuiltinUnit
-wrappedAlwaysTrueMint = wrapOneArg alwaysTrueMint
+wrappedAlwaysTrueMint = BI.unitval
 
 alwaysTrueMintCode :: CompiledCode (BuiltinData -> BuiltinUnit)
 alwaysTrueMintCode = $$(compile [||wrappedAlwaysTrueMint||])
