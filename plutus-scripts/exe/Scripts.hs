@@ -78,7 +78,7 @@ alwaysTrueMint _ = True
 
 {-# INLINEABLE wrappedAlwaysTrueMint #-}
 wrappedAlwaysTrueMint :: BuiltinData -> BuiltinUnit
-wrappedAlwaysTrueMint = BI.unitval
+wrappedAlwaysTrueMint _ = BI.unitval
 
 alwaysTrueMintCode :: CompiledCode (BuiltinData -> BuiltinUnit)
 alwaysTrueMintCode = $$(compile [||wrappedAlwaysTrueMint||])
