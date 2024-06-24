@@ -14,8 +14,7 @@
 
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-
-    cardano-node.url = "github:input-output-hk/cardano-node/1454108852b7075009bb1e8dc5b6348ffca81bb5";
+    cardano-node.url = "github:input-output-hk/cardano-node/8.12.0-pre";
 
     hackage = {
       url = "github:input-output-hk/hackage.nix";
