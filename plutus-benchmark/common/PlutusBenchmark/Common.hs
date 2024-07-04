@@ -1,29 +1,10 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- | Miscellaneous shared code for benchmarking-related things.
 module PlutusBenchmark.Common (
-    module Export,
-    Program,
-    Term,
-    getConfig,
-    toAnonDeBruijnTerm,
-    toNamedDeBruijnTerm,
-    compiledCodeToTerm,
-    haskellValueToTerm,
-    benchProgramCek,
-    unsafeRunTermCek,
-    runTermCek,
-    cekResultMatchesHaskellValue,
-    mkEvalCtx,
-    evaluateCekLikeInProd,
-    benchTermCek,
     TestSize (..),
     printHeader,
     printSizeStatistics,
-    goldenVsTextualOutput,
-    checkGoldenFileExists,
 )
 where
 
@@ -31,12 +12,7 @@ where
 -- change the execution times of the validation benchmarks.  See
 -- https://github.com/IntersectMBO/plutus/issues/5906.
 
-import Paths_plutus_benchmark as Export
 import PlutusBenchmark.ProtocolParameters as PP
-
-import PlutusLedgerApi.Common qualified as LedgerApi
-
-import PlutusTx qualified as Tx
 
 import PlutusCore qualified as PLC
 import PlutusCore.Default
@@ -46,53 +22,14 @@ import PlutusCore.Evaluation.Machine.ExMemory (ExCPU (..), ExMemory (..))
 
 import UntypedPlutusCore qualified as UPLC
 import UntypedPlutusCore.Evaluation.Machine.Cek as Cek
-import UntypedPlutusCore.Evaluation.Machine.Cek qualified as UPLC
 
-import Control.DeepSeq (force)
-import Control.Monad (unless)
-import Criterion.Main
-import Criterion.Types (Config (..))
 import Data.ByteString qualified as BS
 import Data.SatInt (fromSatInt)
-import Data.Text (Text)
 import Flat qualified
-import GHC.IO.Encoding (setLocaleEncoding)
-import System.Directory
-import System.FilePath
 import System.IO
-import System.IO.Temp
-import Test.Tasty
-import Test.Tasty.Golden
 import Text.Printf (hPrintf, printf)
 
-{- | The Criterion configuration returned by `getConfig` will cause an HTML report
-   to be generated.  If run via stack/cabal this will be written to the
-   `plutus-benchmark` directory by default.  The -o option can be used to change
-   this, but an absolute path will probably be required (eg, "-o=$PWD/report.html") .
--}
-getConfig :: Double -> IO Config
-getConfig limit = do
-    templateDir <- getDataFileName ("common" </> "templates")
-    -- Include number of iterations in HTML report
-    let templateFile = templateDir </> "with-iterations" <.> "tpl"
-    pure $
-        defaultConfig
-            { template = templateFile
-            , reportFile = Just "report.html"
-            , timeLimit = limit
-            }
-
 type Term = UPLC.Term PLC.NamedDeBruijn DefaultUni DefaultFun ()
-type Program = UPLC.Program PLC.NamedDeBruijn DefaultUni DefaultFun ()
-
-{- | Given a DeBruijn-named term, give every variable the name "v".  If we later
-   call unDeBruijn, that will rename the variables to things like "v123", where
-   123 is the relevant de Bruijn index.
--}
-toNamedDeBruijnTerm ::
-    UPLC.Term UPLC.DeBruijn DefaultUni DefaultFun () ->
-    UPLC.Term UPLC.NamedDeBruijn DefaultUni DefaultFun ()
-toNamedDeBruijnTerm = UPLC.termMapNames UPLC.fakeNameDeBruijn
 
 -- | Remove the textual names from a NamedDeBruijn term
 toAnonDeBruijnTerm ::
@@ -106,35 +43,6 @@ toAnonDeBruijnProg ::
 toAnonDeBruijnProg (UPLC.Program () ver body) =
     UPLC.Program () ver $ toAnonDeBruijnTerm body
 
--- | Just extract the body of a program wrapped in a 'CompiledCodeIn'.  We use this a lot.
-compiledCodeToTerm ::
-    Tx.CompiledCodeIn DefaultUni DefaultFun a -> Term
-compiledCodeToTerm (Tx.getPlcNoAnn -> UPLC.Program _ _ body) = body
-
-{- | Lift a Haskell value to a PLC term.  The constraints get a bit out of control
-   if we try to do this over an arbitrary universe.
--}
-haskellValueToTerm ::
-    (Tx.Lift DefaultUni a) => a -> Term
-haskellValueToTerm = compiledCodeToTerm . Tx.liftCodeDef
-
--- | Just run a term to obtain an `EvaluationResult` (used for tests etc.)
-unsafeRunTermCek :: Term -> EvaluationResult Term
-unsafeRunTermCek =
-    unsafeToEvaluationResult
-        . (\(res, _, _) -> res)
-        . runCekDeBruijn PLC.defaultCekParametersForTesting Cek.restrictingEnormous Cek.noEmitter
-
--- | Just run a term.
-runTermCek ::
-    Term ->
-    ( Either (CekEvaluationException UPLC.NamedDeBruijn DefaultUni DefaultFun) Term
-    , [Text]
-    )
-runTermCek =
-    (\(res, _, logs) -> (res, logs))
-        . runCekDeBruijn PLC.defaultCekParametersForTesting Cek.restrictingEnormous Cek.logEmitter
-
 -- | Evaluate a script and return the CPU and memory costs (according to the cost model)
 getCostsCek :: UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun () -> (Integer, Integer)
 getCostsCek (UPLC.Program _ _ prog) =
@@ -142,76 +50,6 @@ getCostsCek (UPLC.Program _ _ prog) =
         (_res, Cek.TallyingSt _ budget, _logs) ->
             let ExBudget (ExCPU cpu) (ExMemory mem) = budget
              in (fromSatInt cpu, fromSatInt mem)
-
-{- | Evaluate a PLC term and check that the result matches a given Haskell value
-   (perhaps obtained by running the Haskell code that the term was compiled
-   from).  We evaluate the lifted Haskell value as well, because lifting may
-   produce reducible terms. The function is polymorphic in the comparison
-   operator so that we can use it with both HUnit Assertions and QuickCheck
-   Properties.
--}
-cekResultMatchesHaskellValue ::
-    (Tx.Lift DefaultUni a) =>
-    Term ->
-    (EvaluationResult Term -> EvaluationResult Term -> b) ->
-    a ->
-    b
-cekResultMatchesHaskellValue term matches value =
-    unsafeRunTermCek term `matches` unsafeRunTermCek (haskellValueToTerm value)
-
-{- | Create the evaluation context for the benchmarks. This doesn't exactly match how it's done
-on-chain, but that's okay because the evaluation context is cached by the ledger, so we're
-deliberately not including it in the benchmarks.
--}
-mkEvalCtx :: LedgerApi.EvaluationContext
-mkEvalCtx =
-    case PLC.defaultCostModelParamsForTesting of
-        Just p ->
-            let errOrCtx =
-                    -- The validation benchmarks were all created from PlutusV3 scripts
-                    LedgerApi.mkDynEvaluationContext
-                        LedgerApi.PlutusV3
-                        [DefaultFunSemanticsVariantC]
-                        (const DefaultFunSemanticsVariantC)
-                        p
-             in case errOrCtx of
-                    Right ec -> ec
-                    Left err -> error $ show err
-        Nothing -> error "Couldn't get cost model params"
-
--- | Evaluate a term as it would be evaluated using the on-chain evaluator.
-evaluateCekLikeInProd ::
-    LedgerApi.EvaluationContext ->
-    UPLC.Term PLC.NamedDeBruijn PLC.DefaultUni PLC.DefaultFun () ->
-    Either
-        (UPLC.CekEvaluationException UPLC.NamedDeBruijn UPLC.DefaultUni UPLC.DefaultFun)
-        (UPLC.Term UPLC.NamedDeBruijn UPLC.DefaultUni UPLC.DefaultFun ())
-evaluateCekLikeInProd evalCtx term = do
-    let (getRes, _, _) =
-            let
-                -- The validation benchmarks were all created from PlutusV3 scripts
-                pv = LedgerApi.ledgerLanguageIntroducedIn LedgerApi.PlutusV3
-             in
-                LedgerApi.evaluateTerm UPLC.restrictingEnormous pv LedgerApi.Quiet evalCtx term
-    getRes
-
-{- | Evaluate a term and either throw if evaluation fails or discard the result and return '()'.
-Useful for benchmarking.
--}
-evaluateCekForBench ::
-    LedgerApi.EvaluationContext ->
-    UPLC.Term PLC.NamedDeBruijn PLC.DefaultUni PLC.DefaultFun () ->
-    ()
-evaluateCekForBench evalCtx = either (error . show) (const ()) . evaluateCekLikeInProd evalCtx
-
-benchTermCek :: LedgerApi.EvaluationContext -> Term -> Benchmarkable
-benchTermCek evalCtx term =
-    let !term' = force term
-     in whnf (evaluateCekForBench evalCtx) term'
-
-benchProgramCek :: LedgerApi.EvaluationContext -> Program -> Benchmarkable
-benchProgramCek evalCtx (UPLC.Program _ _ term) =
-    benchTermCek evalCtx term
 
 ---------------- Printing tables of information about costs ----------------
 
@@ -264,82 +102,3 @@ printSizeStatistics h n script = do
         (percentTxt cpu PP.maxTxExSteps)
         mem
         (percentTxt mem PP.maxTxExMem)
-
----------------- Golden tests for tabular output ----------------
-
-{- | Run a program which produces textual output and compare the results with a
-   golden file.  This is intended for tests which produce a lot of formatted
-   text.  The output is written to a file in the system temporary directory and
-   deleted if the test passes.  If the test fails then the output is retained
-   for further inspection.
--}
-goldenVsTextualOutput ::
-    TestName -> -- The name of the test.
-    FilePath -> -- The path to the golden file.
-    FilePath -> -- The name of the results file (may be extended to make it unique).
-    (Handle -> IO a) -> -- A function which runs tests and writes output to the given handle.
-    IO ()
-goldenVsTextualOutput testName goldenFile filename runTest = do
-    setLocaleEncoding utf8
-    tmpdir <- getCanonicalTemporaryDirectory
-    (resultsFile, handle) <- openBinaryTempFile tmpdir filename
-    -- \^ Binary mode to avoid problems with line endings.  See documentation for Test.Tasty.Golden
-    Test.Tasty.defaultMain $
-        localOption OnPass $ -- Delete the output if the test succeeds.
-            goldenVsFileDiff
-                testName
-                (\expected actual -> ["diff", "-u", expected, actual]) -- How to to display differences.
-                goldenFile
-                resultsFile
-                (runTest handle >> hClose handle)
-
-{- Note [Paths to golden files]
-   Some of our tests contain hard-coded relative paths to golden files.  This is
-   a little unsatisfactory because if for example we change the name of the
-   directory containing the file then it won't be found during the test but the
-   test will succeed and a new golden file will be created in the new directory,
-   leading to the possibility that a change in the output won't be detected.  A
-   similar thing will happen if someone forgets to check a golden file into the
-   repository and the test is run in a new checkout.  Golden tests from
-   tasty-golden do print out a message when the golden file doesn't exist, but
-   it's in a very unobtrusive colour and easy to miss.  Another issue is that
-   tests can be run from cabal using either `cabal test` or `cabal run`. If
-   `cabal test` is used, cabal sets the working directory of the test program
-   (which is used as the root for relative paths) to be the directory containing
-   the relevant .cabal file, which is what our tests expect.  However, if `cabal
-   run` is used then cabal sets the working directory to the current shell
-   directory, and this can again lead to the wrong path being used with the
-   possibility of a change being missed; also new golden files may be produced
-   in unexpected places.  This function is used to mitigate these risks by
-   checking that a golden file already exists in the expected place and issuing
-   an error if it isn't.  This does mean that an error may occur the first time
-   a golden test is run.  To avoid this, create an initial version of the file
-   manually and if necessary use the `--accept` option to overwrite its
-   contents.
-   -}
-checkGoldenFileExists :: FilePath -> IO ()
-checkGoldenFileExists path = do
-    fullPath <- makeAbsolute path
-    fileExists <- doesFileExist path
-    if not fileExists
-        then errorWithExplanation $ "golden file " ++ fullPath ++ " does not exist."
-        else do
-            perms <- getPermissions path
-            unless (writable perms) $
-                errorWithExplanation $
-                    "golden file " ++ fullPath ++ " is not writable."
-  where
-    -- if not (writable perms)
-    --     then errorWithExplanation $ "golden file " ++ fullPath ++ " is not writable."
-    --     else pure ()
-
-    errorWithExplanation s =
-        let msg =
-                "\n* ERROR: "
-                    ++ s
-                    ++ "\n"
-                    ++ "* To ensure that the correct path is used, either use `cabal test` "
-                    ++ "or run the test in the root directory of the relevant package.\n"
-                    ++ "* If this is the first time this test has been run, create an "
-                    ++ "initial golden file manually."
-         in error msg
