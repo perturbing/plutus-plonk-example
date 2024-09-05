@@ -10,6 +10,7 @@ cabalProject:
     inputs.cardano-node.packages.cardano-cli
     inputs.nixpkgs-unstable.legacyPackages.${system}.circom
     inputs.snarkjs-cardano.defaultPackage.${system}
+    inputs.aiken.outputs.packages.${system}.aiken
     pkgs.jq
     pkgs.ghcid
     pkgs.nodejs

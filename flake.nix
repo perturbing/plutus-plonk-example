@@ -32,6 +32,8 @@
     };
 
     snarkjs-cardano.url = "github:perturbing/snarkjs-cardano/42eb57674042f9f14c5aee265bb49822119701f6";
+
+    aiken.url = "github:aiken-lang/aiken/v1.1.0";
   };
 
 

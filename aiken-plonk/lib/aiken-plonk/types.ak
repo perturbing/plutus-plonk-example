@@ -1,0 +1,5 @@
+use aiken/bls12_381/scalar.{bls12_381_scalar_field_prime}
+
+test generator_1() {
+  bls12_381_scalar_field_prime == 52435875175126190479447740508185965837690552500527637822603658699938581184513
+}

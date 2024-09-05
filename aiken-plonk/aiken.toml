@@ -1,0 +1,18 @@
+name = "perturbing/aiken-plonk"
+version = "0.0.0"
+compiler = "v1.1.0"
+plutus = "v3"
+license = "Apache-2.0"
+description = "Aiken contracts for project 'perturbing/aiken-plonk'"
+
+[repository]
+user = "perturbing"
+project = "plutus-plonk-example"
+platform = "github"
+
+[[dependencies]]
+name = "perturbing/stdlib"
+version = "cb5a898d823bde1721505c9e944c98a62eebe2ee"
+source = "github"
+
+[config]
