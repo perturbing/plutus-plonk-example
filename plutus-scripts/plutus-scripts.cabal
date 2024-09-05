@@ -20,11 +20,11 @@ executable write-scripts
     , aeson
     , base >=4.2 && <5
     , bytestring
-    , cardano-api ^>=8.48.0.0
-    , plutus-core ^>=1.30
-    , plutus-ledger-api ^>=1.30
+    , cardano-api ^>=9.1.0
+    , plutus-core ^>=1.31
+    , plutus-ledger-api ^>=1.31
     , plutus-plonk
-    , plutus-tx ^>=1.30
-    , plutus-tx-plugin ^>=1.30
+    , plutus-tx ^>=1.31
+    , plutus-tx-plugin ^>=1.31
     , polynomial-algebra
     , serialise
